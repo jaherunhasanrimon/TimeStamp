@@ -8,6 +8,8 @@ public struct ProjectsListView: View {
         public var id: String { rawValue }
     }
 
+    public var onViewEntries: ((EntryFilter) -> Void)? = nil
+
     @Environment(PersistenceStore.self) private var store
 
     @State private var searchText: String = ""
@@ -17,7 +19,9 @@ public struct ProjectsListView: View {
     @State private var projectToDelete: Project? = nil
     @State private var isDeleteAlertPresented: Bool = false
 
-    public init() {}
+    public init(onViewEntries: ((EntryFilter) -> Void)? = nil) {
+        self.onViewEntries = onViewEntries
+    }
 
     private var filteredProjects: [Project] {
         let isArchivedTarget = (selectedSegment == .archived)
@@ -131,7 +135,8 @@ public struct ProjectsListView: View {
                                 onDelete: {
                                     projectToDelete = project
                                     isDeleteAlertPresented = true
-                                }
+                                },
+                                onViewEntries: onViewEntries
                             )
                         }
                     }

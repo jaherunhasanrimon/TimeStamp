@@ -4,6 +4,7 @@ public struct ProjectRowView: View {
     public let project: Project
     public let onEdit: () -> Void
     public let onDelete: () -> Void
+    public var onViewEntries: ((EntryFilter) -> Void)? = nil
 
     @Environment(PersistenceStore.self) private var store
     @State private var isExpanded: Bool = false
@@ -12,10 +13,16 @@ public struct ProjectRowView: View {
     @State private var taskToDelete: Task? = nil
     @State private var isDeleteTaskAlertPresented: Bool = false
 
-    public init(project: Project, onEdit: @escaping () -> Void, onDelete: @escaping () -> Void) {
+    public init(
+        project: Project,
+        onEdit: @escaping () -> Void,
+        onDelete: @escaping () -> Void,
+        onViewEntries: ((EntryFilter) -> Void)? = nil
+    ) {
         self.project = project
         self.onEdit = onEdit
         self.onDelete = onDelete
+        self.onViewEntries = onViewEntries
     }
 
     private var projectTasks: [Task] {
@@ -186,6 +193,12 @@ public struct ProjectRowView: View {
                 onEdit()
             } label: {
                 Label("Edit Project...", systemImage: "pencil")
+            }
+
+            Button {
+                onViewEntries?(.project(project.id))
+            } label: {
+                Label("View Entries", systemImage: "clock")
             }
 
             Divider()

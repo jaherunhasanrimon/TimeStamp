@@ -11,7 +11,7 @@ struct TimeStampApp: App {
             NavigationSplitView {
                 AppSidebar(selection: $selectedDestination)
             } detail: {
-                DetailContainerView(destination: selectedDestination)
+                DetailContainerView(destination: $selectedDestination)
             }
             .frame(
                 minWidth: 800,

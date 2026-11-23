@@ -1,10 +1,15 @@
 import SwiftUI
 
 public struct DetailContainerView: View {
-    public let destination: SidebarDestination?
+    @Binding public var destination: SidebarDestination?
+    @State private var activeEntryFilter: EntryFilter = .none
+
+    public init(destination: Binding<SidebarDestination?>) {
+        self._destination = destination
+    }
 
     public init(destination: SidebarDestination?) {
-        self.destination = destination
+        self._destination = .constant(destination)
     }
 
     public var body: some View {
@@ -15,13 +20,21 @@ public struct DetailContainerView: View {
             Group {
                 switch destination {
                 case .timer:
-                    EntriesListView()
+                    EntriesListView(filter: $activeEntryFilter)
                 case .projects:
-                    ProjectsListView()
-                case .calendar, .dashboard, .reports, .clients, .settings:
+                    ProjectsListView(onViewEntries: { filter in
+                        activeEntryFilter = filter
+                        destination = .timer
+                    })
+                case .clients:
+                    ClientsListView(onViewEntries: { filter in
+                        activeEntryFilter = filter
+                        destination = .timer
+                    })
+                case .calendar, .dashboard, .reports, .settings:
                     placeholderView(for: destination!)
                 case .none:
-                    EntriesListView()
+                    EntriesListView(filter: $activeEntryFilter)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
