@@ -1,0 +1,217 @@
+import Foundation
+import Observation
+
+@Observable
+@MainActor
+public final class TimerManager {
+    public static let shared = TimerManager(store: PersistenceStore.shared)
+
+    public private(set) var activeEntry: TimeEntry?
+    public private(set) var currentDuration: TimeInterval = 0
+    public private(set) var formattedDuration: String = "00:00:00"
+    public private(set) var isPaused: Bool = false
+
+    public var isRunning: Bool {
+        activeEntry != nil && !isPaused
+    }
+
+    // Retained values for chained work on the same project (D-06)
+    public var retainedProjectId: UUID?
+    public var retainedTaskId: UUID?
+
+    private let store: PersistenceStore
+    private var sleepMonitor: SleepWakeMonitor?
+    private var tickTimer: Timer?
+
+    public init(store: PersistenceStore) {
+        self.store = store
+        setupSleepMonitor()
+        restoreActiveSession()
+    }
+
+    private func setupSleepMonitor() {
+        self.sleepMonitor = SleepWakeMonitor(
+            onSleep: { [weak self] in
+                self?.updateTick()
+            },
+            onWake: { [weak self] in
+                self?.updateTick()
+            }
+        )
+    }
+
+    // MARK: - Timer Controls
+
+    /// Starts a new active tracking session (TIMER-01)
+    public func start(
+        description: String = "",
+        projectId: UUID? = nil,
+        taskId: UUID? = nil,
+        tagIds: [UUID] = []
+    ) {
+        // If a timer is already running, stop it first to prevent collisions (D-10)
+        if activeEntry != nil {
+            _ = stop()
+        }
+
+        let entry = TimeEntry(
+            entryDescription: description,
+            startDate: Date(),
+            endDate: nil,
+            accumulatedDuration: 0,
+            isPaused: false,
+            projectId: projectId,
+            taskId: taskId,
+            tagIds: tagIds
+        )
+
+        self.activeEntry = entry
+        self.isPaused = false
+        self.retainedProjectId = projectId
+        self.retainedTaskId = taskId
+
+        store.saveTimeEntry(entry)
+        updateTick()
+        startTickTimer()
+    }
+
+    /// Pauses an active timer without losing accumulated duration (TIMER-02)
+    public func pause() {
+        guard let entry = activeEntry, !isPaused else { return }
+
+        let now = Date()
+        let elapsedSinceStart = max(0, now.timeIntervalSince(entry.startDate))
+        entry.accumulatedDuration += elapsedSinceStart
+        entry.isPaused = true
+        entry.updatedAt = now
+
+        self.isPaused = true
+        stopTickTimer()
+        updateTick()
+        store.saveTimeEntry(entry)
+    }
+
+    /// Resumes a paused timer session (TIMER-02)
+    public func resume() {
+        guard let entry = activeEntry, isPaused else { return }
+
+        let now = Date()
+        entry.startDate = now
+        entry.isPaused = false
+        entry.updatedAt = now
+
+        self.isPaused = false
+        updateTick()
+        startTickTimer()
+        store.saveTimeEntry(entry)
+    }
+
+    /// Stops the timer and saves the completed TimeEntry (TIMER-03)
+    @discardableResult
+    public func stop() -> TimeEntry? {
+        guard let entry = activeEntry else { return nil }
+
+        stopTickTimer()
+
+        let now = Date()
+        if !isPaused {
+            let session = max(0, now.timeIntervalSince(entry.startDate))
+            entry.accumulatedDuration += session
+        }
+
+        entry.endDate = now
+        entry.isPaused = false
+        entry.updatedAt = now
+
+        // Retain project & task for chaining (D-06)
+        self.retainedProjectId = entry.projectId
+        self.retainedTaskId = entry.taskId
+
+        store.saveTimeEntry(entry)
+
+        let completed = entry
+        self.activeEntry = nil
+        self.isPaused = false
+        self.currentDuration = 0
+        self.formattedDuration = "00:00:00"
+
+        return completed
+    }
+
+    /// Discards the active timer without saving a completed entry (D-08)
+    public func discard() {
+        guard let entry = activeEntry else { return }
+
+        stopTickTimer()
+        store.deleteTimeEntry(id: entry.id)
+
+        self.activeEntry = nil
+        self.isPaused = false
+        self.currentDuration = 0
+        self.formattedDuration = "00:00:00"
+    }
+
+    /// Continues tracking from a past entry with seamless auto-switch (TIMER-04, D-09, D-10, D-11, D-12)
+    public func continueEntry(_ entry: TimeEntry) {
+        start(
+            description: entry.entryDescription,
+            projectId: entry.projectId,
+            taskId: entry.taskId,
+            tagIds: entry.tagIds
+        )
+    }
+
+    // MARK: - Rehydration / Auto-Restore (D-14)
+
+    /// Restores any uncompleted running session from local storage on launch
+    public func restoreActiveSession() {
+        if let existingActive = store.timeEntries.first(where: { $0.endDate == nil }) {
+            self.activeEntry = existingActive
+            self.isPaused = existingActive.isPaused
+            self.retainedProjectId = existingActive.projectId
+            self.retainedTaskId = existingActive.taskId
+
+            updateTick()
+            if !existingActive.isPaused {
+                startTickTimer()
+            }
+        }
+    }
+
+    // MARK: - RunLoop Tick Loop (D-15)
+
+    private func startTickTimer() {
+        stopTickTimer()
+        // 1-second cadence on .common RunLoop for battery & CPU efficiency (D-15)
+        let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.updateTick()
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        self.tickTimer = timer
+    }
+
+    private func stopTickTimer() {
+        tickTimer?.invalidate()
+        tickTimer = nil
+    }
+
+    public func updateTick() {
+        guard let entry = activeEntry else {
+            self.currentDuration = 0
+            self.formattedDuration = "00:00:00"
+            return
+        }
+
+        let duration = TimeCalculator.calculateDuration(
+            startDate: entry.startDate,
+            endDate: entry.endDate,
+            accumulatedDuration: entry.accumulatedDuration,
+            isPaused: isPaused
+        )
+
+        self.currentDuration = duration
+        self.formattedDuration = TimeCalculator.formatDuration(duration)
+    }
+}
