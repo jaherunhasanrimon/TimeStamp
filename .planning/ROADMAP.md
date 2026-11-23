@@ -209,7 +209,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | Phase | Mode | Plans Complete | Status | Completed |
 |-------|------|----------------|--------|-----------|
 | 1. Scaffolding, Models & Shell | mvp | 2/2 | Complete | 2026-11-23 |
-| 2. Core Timer Engine | mvp | 0/2 | Not started | - |
+| 2. Core Timer Engine | mvp | 0/2 | Planned | - |
 | 3. Entries Log & Manual Tracking | mvp | 0/2 | Not started | - |
 | 4. Projects, Tasks & Clients | mvp | 0/2 | Not started | - |
 | 5. Menu Bar Companion & Hotkeys | mvp | 0/2 | Not started | - |
