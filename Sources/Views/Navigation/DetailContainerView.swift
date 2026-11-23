@@ -33,7 +33,9 @@ public struct DetailContainerView: View {
                     })
                 case .dashboard:
                     DashboardView()
-                case .calendar, .reports, .settings:
+                case .reports:
+                    ReportsView()
+                case .calendar, .settings:
                     placeholderView(for: destination!)
                 case .none:
                     EntriesListView(filter: $activeEntryFilter)
