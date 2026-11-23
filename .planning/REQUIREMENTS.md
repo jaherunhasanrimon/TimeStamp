@@ -67,9 +67,9 @@
 
 ### Settings & Preferences
 
-- [ ] **SET-01**: User can switch between Dark, Light, and System appearance modes
-- [ ] **SET-02**: User can configure the global hotkey shortcut
-- [ ] **SET-03**: User can configure timer preferences (default project, auto-stop options)
+- [x] **SET-01**: User can switch between Dark, Light, and System appearance modes
+- [x] **SET-02**: User can configure the global hotkey shortcut
+- [x] **SET-03**: User can configure timer preferences (default project, auto-stop options)
 
 ## v2 Requirements
 
@@ -125,9 +125,9 @@
 | CAL-01 | Phase 7 | Complete |
 | CAL-02 | Phase 7 | Complete |
 | CAL-03 | Phase 7 | Complete |
-| SET-01 | Phase 8 | Pending |
-| SET-02 | Phase 8 | Pending |
-| SET-03 | Phase 8 | Pending |
+| SET-01 | Phase 8 | Complete |
+| SET-02 | Phase 8 | Complete |
+| SET-03 | Phase 8 | Complete |
 
 **Coverage:**
 - v1 requirements: 35 total

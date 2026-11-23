@@ -13,7 +13,7 @@ TimeStamp is an authentic, native macOS desktop time-tracking application inspir
 - [x] **Phase 5: macOS Menu Bar Companion & Global Hotkeys** - Add MenuBarExtra live ticker, quick toggle menu, and system-wide keyboard shortcuts
 - [x] **Phase 6: Today Dashboard & Swift Charts Reports** - Build daily progress summary, weekly bar chart, distribution analytics, and CSV/JSON export
 - [x] **Phase 7: Interactive Calendar Timeline View** - Implement visual day & week calendar time block grids with click-to-edit
-- [ ] **Phase 8: Settings, Theme Polish & End-to-End Verification** - Deliver preferences (Dark/Light/System), shortcuts config, and full verification
+- [x] **Phase 8: Settings, Theme Polish & End-to-End Verification** - Deliver preferences (Dark/Light/System), shortcuts config, and full verification
 
 ## Phase Details
 
@@ -198,8 +198,8 @@ Plans:
 
 Plans:
 
-- [ ] 08-01: Build native macOS `SettingsView` with tabs for General, Appearance, Shortcuts, and Timer Behavior.
-- [ ] 08-02: Execute comprehensive test suite, verify sleep/wake resilience, and complete end-to-end verification.
+- [x] 08-01: Build native macOS `SettingsView` with tabs for General, Appearance, Shortcuts, and Timer Behavior.
+- [x] 08-02: Execute comprehensive test suite, verify sleep/wake resilience, and complete end-to-end verification.
 
 ## Progress
 
@@ -210,9 +210,9 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 |-------|------|----------------|--------|-----------|
 | 1. Scaffolding, Models & Shell | mvp | 2/2 | Complete | 2026-11-23 |
 | 2. Core Timer Engine | mvp | 2/2 | Complete | 2026-11-23 |
-| 3. Entries Log & Manual Tracking | mvp | 0/2 | Planned | - |
-| 4. Projects, Tasks & Clients | mvp | 0/2 | Not started | - |
-| 5. Menu Bar Companion & Hotkeys | mvp | 0/2 | Not started | - |
-| 6. Dashboard & Reports | mvp | 0/2 | Not started | - |
-| 7. Calendar Timeline View | mvp | 0/2 | Not started | - |
-| 8. Settings & Verification | mvp | 0/2 | Not started | - |
+| 3. Entries Log & Manual Tracking | mvp | 2/2 | Complete | 2026-11-23 |
+| 4. Projects, Tasks & Clients | mvp | 2/2 | Complete | 2026-11-23 |
+| 5. Menu Bar Companion & Hotkeys | mvp | 2/2 | Complete | 2026-11-23 |
+| 6. Dashboard & Reports | mvp | 2/2 | Complete | 2026-11-23 |
+| 7. Calendar Timeline View | mvp | 2/2 | Complete | 2026-11-23 |
+| 8. Settings & Verification | mvp | 2/2 | Complete | 2026-11-23 |
