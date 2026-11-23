@@ -15,12 +15,15 @@ Frictionless, accurate time tracking that stays out of the user's way while prov
 - [x] Native macOS running timer with start, pause, stop, and continue actions (Validated in Phase 2)
 - [x] Timestamp-based drift-free elapsed time tracking that stays accurate across app minimization and Mac sleep/wake cycles (Validated in Phase 2)
 - [x] Local persistence layer with repository pattern designed for future CloudKit / cloud sync (Validated in Phase 1)
+- [x] Group time entries chronologically by day with relative headers ("Today", "Yesterday", "Mon, Nov 21") and daily totals (Validated in Phase 3)
+- [x] Inline and modal editing for time entry details, project/task allocation, and synchronized duration recalculation (Validated in Phase 3)
+- [x] Delete time entries with confirmation dialog and swipe-to-delete support (Validated in Phase 3)
+- [x] Manual past time entry logging with custom timestamps, duration, and Cmd+N shortcut (Validated in Phase 3)
 
 ### Active
 
 - [ ] Menu bar status item showing live timer ticker and quick start/stop controls
 - [ ] Global keyboard shortcut to toggle or start/stop the active timer from any app
-- [ ] Complete Time Entries management (create, edit description/times, delete, group by day/week)
 - [ ] Projects management with custom color tagging
 - [ ] Tasks support organized hierarchically under projects
 - [ ] Clients management with association to projects

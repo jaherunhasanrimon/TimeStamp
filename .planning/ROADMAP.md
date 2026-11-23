@@ -8,7 +8,7 @@ TimeStamp is an authentic, native macOS desktop time-tracking application inspir
 
 - [x] **Phase 1: Project Scaffolding, SwiftData Models & App Shell** - Bootstrap macOS app target, SwiftData container, design tokens, and sidebar navigation
 - [x] **Phase 2: Core Drift-Free Timer Engine** - Implement wall-clock reference timer, start/pause/stop/continue mechanics, and sleep/wake listeners
-- [ ] **Phase 3: Time Entries Log & Manual Tracking** - Deliver daily grouped entry lists, daily duration totals, inline editing, and manual logging
+- [x] **Phase 3: Time Entries Log & Manual Tracking** - Deliver daily grouped entry lists, daily duration totals, inline editing, and manual logging
 - [ ] **Phase 4: Projects, Tasks, and Clients Management** - Build color-coded projects, task hierarchy, client entities, and entity filtering
 - [ ] **Phase 5: macOS Menu Bar Companion & Global Hotkeys** - Add MenuBarExtra live ticker, quick toggle menu, and system-wide keyboard shortcuts
 - [ ] **Phase 6: Today Dashboard & Swift Charts Reports** - Build daily progress summary, weekly bar chart, distribution analytics, and CSV/JSON export
@@ -86,8 +86,8 @@ Plans:
 
 Plans:
 
-- [ ] 03-01: Build `EntriesListView` with daily grouped sections, duration calculations, entry rows, and swipe/context menu actions.
-- [ ] 03-02: Implement `EntryEditSheet` and `ManualEntryModal` with date/time pickers and validation.
+- [x] 03-01: Build `EntriesListView` with daily grouped sections, duration calculations, entry rows, and swipe/context menu actions.
+- [x] 03-02: Implement `EntryEditSheet` and `ManualEntryModal` with date/time pickers and validation.
 
 ---
 
