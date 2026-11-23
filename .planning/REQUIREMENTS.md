@@ -55,9 +55,9 @@
 
 ### Calendar Timeline View
 
-- [ ] **CAL-01**: User can view time entries as visual blocks on a daily time grid (00:00 - 24:00)
-- [ ] **CAL-02**: User can view a weekly multi-column timeline of time blocks
-- [ ] **CAL-03**: User can click a calendar block to inspect and edit entry details
+- [x] **CAL-01**: User can view time entries as visual blocks on a daily time grid (00:00 - 24:00)
+- [x] **CAL-02**: User can view a weekly multi-column timeline of time blocks
+- [x] **CAL-03**: User can click a calendar block to inspect and edit entry details
 
 ### macOS System Integration & Menu Bar
 
@@ -122,9 +122,9 @@
 | REPT-02 | Phase 6 | Complete |
 | REPT-03 | Phase 6 | Complete |
 | REPT-04 | Phase 6 | Complete |
-| CAL-01 | Phase 7 | Pending |
-| CAL-02 | Phase 7 | Pending |
-| CAL-03 | Phase 7 | Pending |
+| CAL-01 | Phase 7 | Complete |
+| CAL-02 | Phase 7 | Complete |
+| CAL-03 | Phase 7 | Complete |
 | SET-01 | Phase 8 | Pending |
 | SET-02 | Phase 8 | Pending |
 | SET-03 | Phase 8 | Pending |

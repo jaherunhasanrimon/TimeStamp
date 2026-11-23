@@ -12,7 +12,7 @@ TimeStamp is an authentic, native macOS desktop time-tracking application inspir
 - [x] **Phase 4: Projects, Tasks, and Clients Management** - Build color-coded projects, task hierarchy, client entities, and entity filtering
 - [x] **Phase 5: macOS Menu Bar Companion & Global Hotkeys** - Add MenuBarExtra live ticker, quick toggle menu, and system-wide keyboard shortcuts
 - [x] **Phase 6: Today Dashboard & Swift Charts Reports** - Build daily progress summary, weekly bar chart, distribution analytics, and CSV/JSON export
-- [ ] **Phase 7: Interactive Calendar Timeline View** - Implement visual day & week calendar time block grids with click-to-edit
+- [x] **Phase 7: Interactive Calendar Timeline View** - Implement visual day & week calendar time block grids with click-to-edit
 - [ ] **Phase 8: Settings, Theme Polish & End-to-End Verification** - Deliver preferences (Dark/Light/System), shortcuts config, and full verification
 
 ## Phase Details
@@ -176,8 +176,8 @@ Plans:
 
 Plans:
 
-- [ ] 07-01: Build `CalendarTimelineView` day view with vertical 24-hour scale, block layout math, and current time indicator.
-- [ ] 07-02: Build multi-column week timeline view with block selection, quick continuation, and zoom/scroll controls.
+- [x] 07-01: Build `CalendarTimelineView` day view with vertical 24-hour scale, block layout math, and current time indicator.
+- [x] 07-02: Build multi-column week timeline view with block selection, quick continuation, and zoom/scroll controls.
 
 ---
 
