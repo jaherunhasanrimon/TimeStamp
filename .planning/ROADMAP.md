@@ -6,7 +6,7 @@ TimeStamp is an authentic, native macOS desktop time-tracking application inspir
 
 ## Phases
 
-- [ ] **Phase 1: Project Scaffolding, SwiftData Models & App Shell** - Bootstrap macOS app target, SwiftData container, design tokens, and sidebar navigation
+- [x] **Phase 1: Project Scaffolding, SwiftData Models & App Shell** - Bootstrap macOS app target, SwiftData container, design tokens, and sidebar navigation
 - [ ] **Phase 2: Core Drift-Free Timer Engine** - Implement wall-clock reference timer, start/pause/stop/continue mechanics, and sleep/wake listeners
 - [ ] **Phase 3: Time Entries Log & Manual Tracking** - Deliver daily grouped entry lists, daily duration totals, inline editing, and manual logging
 - [ ] **Phase 4: Projects, Tasks, and Clients Management** - Build color-coded projects, task hierarchy, client entities, and entity filtering
@@ -35,11 +35,11 @@ TimeStamp is an authentic, native macOS desktop time-tracking application inspir
 Plans:
 **Wave 1**
 
-- [ ] 01-01: Create macOS app target structure, SwiftData models (`TimeEntry`, `Project`, `Task`, `Client`, `Tag`), and preview container.
+- [x] 01-01: Create macOS app target structure, SwiftData models (`TimeEntry`, `Project`, `Task`, `Client`, `Tag`), and preview container.
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 01-02: Build root window layout, sidebar navigation (`AppSidebar`), design system tokens, and empty detail views.
+- [x] 01-02: Build root window layout, sidebar navigation (`AppSidebar`), design system tokens, and empty detail views.
 
 ---
 
@@ -208,7 +208,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 
 | Phase | Mode | Plans Complete | Status | Completed |
 |-------|------|----------------|--------|-----------|
-| 1. Scaffolding, Models & Shell | mvp | 0/2 | Not started | - |
+| 1. Scaffolding, Models & Shell | mvp | 2/2 | Complete | 2026-11-23 |
 | 2. Core Timer Engine | mvp | 0/2 | Not started | - |
 | 3. Entries Log & Manual Tracking | mvp | 0/2 | Not started | - |
 | 4. Projects, Tasks & Clients | mvp | 0/2 | Not started | - |
