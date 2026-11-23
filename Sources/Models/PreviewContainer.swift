@@ -2,9 +2,7 @@ import Foundation
 
 @MainActor
 public enum PreviewContainer {
-    public static var sample: PersistenceStore {
-        let store = PersistenceStore(inMemory: true)
-
+    public static func seedSampleData(store: PersistenceStore) {
         let acme = Client(name: "Acme Corp", notes: "Enterprise client")
         let globex = Client(name: "Globex Corporation", notes: "SaaS platform")
         store.saveClient(acme)
@@ -54,7 +52,11 @@ public enum PreviewContainer {
         )
         store.saveTimeEntry(e1)
         store.saveTimeEntry(e2)
+    }
 
+    public static var sample: PersistenceStore {
+        let store = PersistenceStore(inMemory: true)
+        seedSampleData(store: store)
         return store
     }
 }

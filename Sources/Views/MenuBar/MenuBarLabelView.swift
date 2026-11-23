@@ -2,6 +2,7 @@ import SwiftUI
 
 public struct MenuBarLabelView: View {
     @Environment(TimerManager.self) private var timerManager
+    @AppStorage("menuBarDisplayFormat") private var displayFormat: String = "icon_and_duration"
 
     public init() {}
 
@@ -9,18 +10,26 @@ public struct MenuBarLabelView: View {
         Group {
             if timerManager.isRunning {
                 HStack(spacing: AppSpacing.xs) {
-                    Image(systemName: "stopwatch")
-                    Text(timerManager.formattedDuration)
-                        .font(Font.system(size: 13, design: .default).monospacedDigit())
+                    if displayFormat != "duration_only" {
+                        Image(systemName: "stopwatch")
+                    }
+                    if displayFormat != "icon_only" {
+                        Text(timerManager.formattedDuration)
+                            .font(Font.system(size: 13, design: .default).monospacedDigit())
+                    }
                 }
                 .help(runningTooltip)
             } else if timerManager.isPaused {
                 HStack(spacing: AppSpacing.xs) {
-                    Image(systemName: "pause.fill")
-                        .foregroundStyle(Color.orange)
-                    Text(timerManager.formattedDuration)
-                        .font(Font.system(size: 13, design: .default).monospacedDigit())
-                        .foregroundStyle(.secondary)
+                    if displayFormat != "duration_only" {
+                        Image(systemName: "pause.fill")
+                            .foregroundStyle(Color.orange)
+                    }
+                    if displayFormat != "icon_only" {
+                        Text(timerManager.formattedDuration)
+                            .font(Font.system(size: 13, design: .default).monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 .help("TimeStamp — Paused")
             } else {

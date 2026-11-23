@@ -5,9 +5,18 @@ struct TimeStampApp: App {
     @State private var store = PersistenceStore.shared
     @State private var timerManager = TimerManager.shared
     @State private var selectedDestination: SidebarDestination? = .timer
+    @AppStorage("appTheme") private var appTheme: String = "system"
 
     init() {
         GlobalHotkeyManager.shared.setupTimerToggle(timerManager: TimerManager.shared)
+    }
+
+    private var resolvedColorScheme: ColorScheme? {
+        switch appTheme {
+        case "light": return .light
+        case "dark": return .dark
+        default: return nil
+        }
     }
 
     var body: some Scene {
@@ -25,6 +34,7 @@ struct TimeStampApp: App {
             )
             .environment(store)
             .environment(timerManager)
+            .preferredColorScheme(resolvedColorScheme)
         }
         .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unified(showsTitle: false))

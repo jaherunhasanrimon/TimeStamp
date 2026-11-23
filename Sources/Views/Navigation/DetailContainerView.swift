@@ -38,7 +38,7 @@ public struct DetailContainerView: View {
                 case .calendar:
                     CalendarTimelineView()
                 case .settings:
-                    placeholderView(for: destination!)
+                    SettingsView()
                 case .none:
                     EntriesListView(filter: $activeEntryFilter)
                 }
