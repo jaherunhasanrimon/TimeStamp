@@ -6,6 +6,10 @@ struct TimeStampApp: App {
     @State private var timerManager = TimerManager.shared
     @State private var selectedDestination: SidebarDestination? = .timer
 
+    init() {
+        GlobalHotkeyManager.shared.setupTimerToggle(timerManager: TimerManager.shared)
+    }
+
     var body: some Scene {
         WindowGroup("TimeStamp", id: "main") {
             NavigationSplitView {
