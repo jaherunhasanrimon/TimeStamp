@@ -25,5 +25,16 @@ struct TimeStampApp: App {
         .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unified(showsTitle: false))
         .handlesExternalEvents(matching: Set(arrayLiteral: "*"))
+
+        // macOS System Menu Bar Companion (SYS-01, SYS-02)
+        MenuBarExtra {
+            MenuBarPopoverView()
+                .environment(store)
+                .environment(timerManager)
+        } label: {
+            MenuBarLabelView()
+                .environment(timerManager)
+        }
+        .menuBarExtraStyle(.window)
     }
 }
