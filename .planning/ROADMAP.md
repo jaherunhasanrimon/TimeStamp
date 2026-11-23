@@ -109,8 +109,8 @@ Plans:
 
 Plans:
 
-- [ ] 04-01: Build `ProjectsListView`, `ProjectEditorSheet`, color picker swatches, and task hierarchy sub-lists.
-- [ ] 04-02: Build `ClientsListView`, client creation sheet, client-to-project associations, and project/client filtering.
+- [x] 04-01: Build `ProjectsListView`, `ProjectEditorSheet`, color picker swatches, and task hierarchy sub-lists.
+- [x] 04-02: Build `ClientsListView`, client creation sheet, client-to-project associations, and project/client filtering.
 
 ---
 

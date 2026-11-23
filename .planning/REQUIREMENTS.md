@@ -7,38 +7,38 @@
 
 ### Timer & Tracking Engine
 
-- [ ] **TIMER-01**: User can start a new timer with optional description, project, and task
-- [ ] **TIMER-02**: User can pause an active timer and resume it without losing accrued time
-- [ ] **TIMER-03**: User can stop an active timer, which saves it as a completed time entry
-- [ ] **TIMER-04**: User can continue tracking a previous time entry with one click
-- [ ] **TIMER-05**: Timer accurately tracks elapsed time across Mac minimization, screen lock, and system sleep/wake cycles without drift
+- [x] **TIMER-01**: User can start a new timer with optional description, project, and task
+- [x] **TIMER-02**: User can pause an active timer and resume it without losing accrued time
+- [x] **TIMER-03**: User can stop an active timer, which saves it as a completed time entry
+- [x] **TIMER-04**: User can continue tracking a previous time entry with one click
+- [x] **TIMER-05**: Timer accurately tracks elapsed time across Mac minimization, screen lock, and system sleep/wake cycles without drift
 
 ### Time Entries Management
 
-- [ ] **ENTRY-01**: User can view tracked time entries grouped chronologically by day
-- [ ] **ENTRY-02**: User can view daily total duration headers for each group of entries
-- [ ] **ENTRY-03**: User can edit description, start time, end time, and project of an existing entry
-- [ ] **ENTRY-04**: User can delete a time entry with confirmation
-- [ ] **ENTRY-05**: User can manually log past time entries with custom start and end times
+- [x] **ENTRY-01**: User can view tracked time entries grouped chronologically by day
+- [x] **ENTRY-02**: User can view daily total duration headers for each group of entries
+- [x] **ENTRY-03**: User can edit description, start time, end time, and project of an existing entry
+- [x] **ENTRY-04**: User can delete a time entry with confirmation
+- [x] **ENTRY-05**: User can manually log past time entries with custom start and end times
 
 ### Projects Management
 
-- [ ] **PROJ-01**: User can create a new project with a name and custom color
-- [ ] **PROJ-02**: User can edit project details (name, color, client assignment)
-- [ ] **PROJ-03**: User can archive or delete a project
-- [ ] **PROJ-04**: User can filter time entries and statistics by project
+- [x] **PROJ-01**: User can create a new project with a name and custom color
+- [x] **PROJ-02**: User can edit project details (name, color, client assignment)
+- [x] **PROJ-03**: User can archive or delete a project
+- [x] **PROJ-04**: User can filter time entries and statistics by project
 
 ### Tasks Hierarchy
 
-- [ ] **TASK-01**: User can create tasks under specific projects
-- [ ] **TASK-02**: User can mark tasks as completed or active
-- [ ] **TASK-03**: User can associate a time entry with a specific task
+- [x] **TASK-01**: User can create tasks under specific projects
+- [x] **TASK-02**: User can mark tasks as completed or active
+- [x] **TASK-03**: User can associate a time entry with a specific task
 
 ### Clients Management
 
-- [ ] **CLNT-01**: User can create and manage client profiles with name and notes
-- [ ] **CLNT-02**: User can associate projects with a client
-- [ ] **CLNT-03**: User can filter entries and view total time tracked per client
+- [x] **CLNT-01**: User can create and manage client profiles with name and notes
+- [x] **CLNT-02**: User can associate projects with a client
+- [x] **CLNT-03**: User can filter entries and view total time tracked per client
 
 ### Today & Weekly Dashboard
 
@@ -92,26 +92,26 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TIMER-01 | Phase 2 | Pending |
-| TIMER-02 | Phase 2 | Pending |
-| TIMER-03 | Phase 2 | Pending |
-| TIMER-04 | Phase 2 | Pending |
-| TIMER-05 | Phase 2 | Pending |
-| ENTRY-01 | Phase 3 | Pending |
-| ENTRY-02 | Phase 3 | Pending |
-| ENTRY-03 | Phase 3 | Pending |
-| ENTRY-04 | Phase 3 | Pending |
-| ENTRY-05 | Phase 3 | Pending |
-| PROJ-01 | Phase 4 | Pending |
-| PROJ-02 | Phase 4 | Pending |
-| PROJ-03 | Phase 4 | Pending |
-| PROJ-04 | Phase 4 | Pending |
-| TASK-01 | Phase 4 | Pending |
-| TASK-02 | Phase 4 | Pending |
-| TASK-03 | Phase 4 | Pending |
-| CLNT-01 | Phase 4 | Pending |
-| CLNT-02 | Phase 4 | Pending |
-| CLNT-03 | Phase 4 | Pending |
+| TIMER-01 | Phase 2 | Complete |
+| TIMER-02 | Phase 2 | Complete |
+| TIMER-03 | Phase 2 | Complete |
+| TIMER-04 | Phase 2 | Complete |
+| TIMER-05 | Phase 2 | Complete |
+| ENTRY-01 | Phase 3 | Complete |
+| ENTRY-02 | Phase 3 | Complete |
+| ENTRY-03 | Phase 3 | Complete |
+| ENTRY-04 | Phase 3 | Complete |
+| ENTRY-05 | Phase 3 | Complete |
+| PROJ-01 | Phase 4 | Complete |
+| PROJ-02 | Phase 4 | Complete |
+| PROJ-03 | Phase 4 | Complete |
+| PROJ-04 | Phase 4 | Complete |
+| TASK-01 | Phase 4 | Complete |
+| TASK-02 | Phase 4 | Complete |
+| TASK-03 | Phase 4 | Complete |
+| CLNT-01 | Phase 4 | Complete |
+| CLNT-02 | Phase 4 | Complete |
+| CLNT-03 | Phase 4 | Complete |
 | SYS-01 | Phase 5 | Pending |
 | SYS-02 | Phase 5 | Pending |
 | SYS-03 | Phase 5 | Pending |
