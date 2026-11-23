@@ -31,7 +31,9 @@ public struct DetailContainerView: View {
                         activeEntryFilter = filter
                         destination = .timer
                     })
-                case .calendar, .dashboard, .reports, .settings:
+                case .dashboard:
+                    DashboardView()
+                case .calendar, .reports, .settings:
                     placeholderView(for: destination!)
                 case .none:
                     EntriesListView(filter: $activeEntryFilter)

@@ -180,6 +180,18 @@ public final class PersistenceStore {
 
     // MARK: - Utilities
 
+    public func project(for id: UUID) -> Project? {
+        projects.first { $0.id == id }
+    }
+
+    public func task(for id: UUID) -> Task? {
+        tasks.first { $0.id == id }
+    }
+
+    public func client(for id: UUID) -> Client? {
+        clients.first { $0.id == id }
+    }
+
     public func clearAll() {
         clients.removeAll()
         projects.removeAll()
