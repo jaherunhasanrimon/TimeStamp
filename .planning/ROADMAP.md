@@ -9,9 +9,9 @@ TimeStamp is an authentic, native macOS desktop time-tracking application inspir
 - [x] **Phase 1: Project Scaffolding, SwiftData Models & App Shell** - Bootstrap macOS app target, SwiftData container, design tokens, and sidebar navigation
 - [x] **Phase 2: Core Drift-Free Timer Engine** - Implement wall-clock reference timer, start/pause/stop/continue mechanics, and sleep/wake listeners
 - [x] **Phase 3: Time Entries Log & Manual Tracking** - Deliver daily grouped entry lists, daily duration totals, inline editing, and manual logging
-- [ ] **Phase 4: Projects, Tasks, and Clients Management** - Build color-coded projects, task hierarchy, client entities, and entity filtering
-- [ ] **Phase 5: macOS Menu Bar Companion & Global Hotkeys** - Add MenuBarExtra live ticker, quick toggle menu, and system-wide keyboard shortcuts
-- [ ] **Phase 6: Today Dashboard & Swift Charts Reports** - Build daily progress summary, weekly bar chart, distribution analytics, and CSV/JSON export
+- [x] **Phase 4: Projects, Tasks, and Clients Management** - Build color-coded projects, task hierarchy, client entities, and entity filtering
+- [x] **Phase 5: macOS Menu Bar Companion & Global Hotkeys** - Add MenuBarExtra live ticker, quick toggle menu, and system-wide keyboard shortcuts
+- [x] **Phase 6: Today Dashboard & Swift Charts Reports** - Build daily progress summary, weekly bar chart, distribution analytics, and CSV/JSON export
 - [ ] **Phase 7: Interactive Calendar Timeline View** - Implement visual day & week calendar time block grids with click-to-edit
 - [ ] **Phase 8: Settings, Theme Polish & End-to-End Verification** - Deliver preferences (Dark/Light/System), shortcuts config, and full verification
 
@@ -154,8 +154,8 @@ Plans:
 
 Plans:
 
-- [ ] 06-01: Build `DashboardView` with today's summary card, daily goal progress ring, and weekly activity bar chart.
-- [ ] 06-02: Build `ReportsView` with Swift Charts (donut/bar breakdowns), date range filters, and `ExportService` (CSV/JSON).
+- [x] 06-01: Build `DashboardView` with today's summary card, daily goal progress ring, and weekly activity bar chart.
+- [x] 06-02: Build `ReportsView` with Swift Charts (donut/bar breakdowns), date range filters, and `ExportService` (CSV/JSON).
 
 ---
 

@@ -42,16 +42,16 @@
 
 ### Today & Weekly Dashboard
 
-- [ ] **DASH-01**: User can view total time tracked today and compare against a daily target
-- [ ] **DASH-02**: User can view a weekly summary bar chart of tracked hours across Monday to Sunday
-- [ ] **DASH-03**: User can view recent activity entries directly from the dashboard
+- [x] **DASH-01**: User can view total time tracked today and compare against a daily target
+- [x] **DASH-02**: User can view a weekly summary bar chart of tracked hours across Monday to Sunday
+- [x] **DASH-03**: User can view recent activity entries directly from the dashboard
 
 ### Productivity Reports & Analytics
 
-- [ ] **REPT-01**: User can view total time distribution by project using interactive charts
-- [ ] **REPT-02**: User can view total time distribution by client
-- [ ] **REPT-03**: User can filter report date ranges (Today, This Week, This Month, Custom)
-- [ ] **REPT-04**: User can export report summaries as CSV or JSON files
+- [x] **REPT-01**: User can view total time distribution by project using interactive charts
+- [x] **REPT-02**: User can view total time distribution by client
+- [x] **REPT-03**: User can filter report date ranges (Today, This Week, This Month, Custom)
+- [x] **REPT-04**: User can export report summaries as CSV or JSON files
 
 ### Calendar Timeline View
 
@@ -115,13 +115,13 @@
 | SYS-01 | Phase 5 | Complete |
 | SYS-02 | Phase 5 | Complete |
 | SYS-03 | Phase 5 | Complete |
-| DASH-01 | Phase 6 | Pending |
-| DASH-02 | Phase 6 | Pending |
-| DASH-03 | Phase 6 | Pending |
-| REPT-01 | Phase 6 | Pending |
-| REPT-02 | Phase 6 | Pending |
-| REPT-03 | Phase 6 | Pending |
-| REPT-04 | Phase 6 | Pending |
+| DASH-01 | Phase 6 | Complete |
+| DASH-02 | Phase 6 | Complete |
+| DASH-03 | Phase 6 | Complete |
+| REPT-01 | Phase 6 | Complete |
+| REPT-02 | Phase 6 | Complete |
+| REPT-03 | Phase 6 | Complete |
+| REPT-04 | Phase 6 | Complete |
 | CAL-01 | Phase 7 | Pending |
 | CAL-02 | Phase 7 | Pending |
 | CAL-03 | Phase 7 | Pending |
