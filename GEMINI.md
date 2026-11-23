@@ -11,7 +11,7 @@ TimeStamp is a polished, native macOS desktop time-tracking application inspired
 
 - **Tech Stack**: Pure Swift & SwiftUI with SwiftData — hard constraint for native macOS performance, memory efficiency (<40MB RAM), and Apple Human Interface Guidelines compliance.
 - **Platform**: macOS 14.0+ Apple Silicon — leverages modern SwiftUI windowing, SwiftData persistence, and macOS menu bar extras.
-- **Persistence**: SwiftData local container with clean model schemas (`TimeEntry`, `Project`, `Task`, `Client`, `Tag`) ensuring migration readiness for future CloudKit syncing.
+- **Persistence**: Native Swift persistence store with clean `@Observable` & `Codable` schemas (`TimeEntry`, `Project`, `Task`, `Client`, `Tag`), atomic local storage, and repository pattern ensuring migration readiness for future CloudKit syncing.
 - **Design System**: Strict adherence to macOS design patterns, support for both native Light and Dark system appearances, and accessible typography.
 <!-- GSD:project-end -->
 

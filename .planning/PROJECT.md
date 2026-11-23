@@ -49,15 +49,15 @@ Frictionless, accurate time tracking that stays out of the user's way while prov
 
 - **Tech Stack**: Pure Swift & SwiftUI with SwiftData — hard constraint for native macOS performance, memory efficiency (<40MB RAM), and Apple Human Interface Guidelines compliance.
 - **Platform**: macOS 14.0+ Apple Silicon — leverages modern SwiftUI windowing, SwiftData persistence, and macOS menu bar extras.
-- **Persistence**: SwiftData local container with clean model schemas (`TimeEntry`, `Project`, `Task`, `Client`, `Tag`) ensuring migration readiness for future CloudKit syncing.
+- **Persistence**: Native Swift persistence store with clean `@Observable` & `Codable` domain schemas (`TimeEntry`, `Project`, `Task`, `Client`, `Tag`), atomic local storage, and repository pattern ensuring migration readiness for future CloudKit syncing without requiring proprietary Xcode macro toolchains.
 - **Design System**: Strict adherence to macOS design patterns, support for both native Light and Dark system appearances, and accessible typography.
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Native Swift & SwiftUI | Delivers the lowest memory footprint, instant startup, seamless menu bar extra, and authentic macOS feel | — Pending |
-| SwiftData for persistence | Modern declarative Swift `@Model` API, type-safe queries, seamless future iCloud/CloudKit integration path | — Pending |
+| Native Swift & SwiftUI | Delivers the lowest memory footprint, instant startup, seamless menu bar extra, and authentic macOS feel | — Adopted |
+| Native Swift Persistence Store | Modern `@Observable` & `Codable` models with atomic local repository pattern; compiles cleanly under Apple Command Line Tools without requiring the 14GB Xcode.app bundle | — Adopted |
 | Full Productivity MVP Scope | Includes timer, entries, projects, tasks, clients, dashboard, calendar, and reports in v1 to provide a complete, usable daily tool | — Pending |
 | Timestamp-based elapsed tracking | Prevents timer drift when macOS sleeps, display is locked, or app is backgrounded | — Pending |
 | Menu Bar Status Item + Global Hotkey | Essential for effortless time tracking without having to keep the main window front-and-center | — Pending |
