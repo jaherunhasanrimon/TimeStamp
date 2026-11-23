@@ -49,17 +49,18 @@ struct ReportsAndExportTests {
         store.saveProject(projA)
         store.saveProject(projB)
 
+        let base = Date()
         let entryA = TimeEntry(
             entryDescription: "Alpha feature",
-            startDate: Date().addingTimeInterval(-7200),
-            endDate: Date().addingTimeInterval(-3600), // 3600s = 1h
+            startDate: base.addingTimeInterval(-7200),
+            endDate: base.addingTimeInterval(-3600), // 3600s = 1h
             accumulatedDuration: 0,
             projectId: projA.id
         )
         let entryB = TimeEntry(
             entryDescription: "Internal refactor",
-            startDate: Date().addingTimeInterval(-10800),
-            endDate: Date(), // 10800s = 3h
+            startDate: base.addingTimeInterval(-10800),
+            endDate: base, // 10800s = 3h
             accumulatedDuration: 0,
             projectId: projB.id
         )
@@ -106,17 +107,18 @@ struct ReportsAndExportTests {
         store.saveProject(proj1)
         store.saveProject(proj2)
 
+        let base = Date()
         let entry1 = TimeEntry(
             entryDescription: "Web design",
-            startDate: Date().addingTimeInterval(-7200),
-            endDate: Date().addingTimeInterval(-3600), // 1h
+            startDate: base.addingTimeInterval(-7200),
+            endDate: base.addingTimeInterval(-3600), // 1h
             accumulatedDuration: 0,
             projectId: proj1.id
         )
         let entry2 = TimeEntry(
             entryDescription: "iOS build",
-            startDate: Date().addingTimeInterval(-10800),
-            endDate: Date().addingTimeInterval(-3600), // 2h
+            startDate: base.addingTimeInterval(-10800),
+            endDate: base.addingTimeInterval(-3600), // 2h
             accumulatedDuration: 0,
             projectId: proj2.id
         )
