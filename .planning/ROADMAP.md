@@ -7,7 +7,7 @@ TimeStamp is an authentic, native macOS desktop time-tracking application inspir
 ## Phases
 
 - [x] **Phase 1: Project Scaffolding, SwiftData Models & App Shell** - Bootstrap macOS app target, SwiftData container, design tokens, and sidebar navigation
-- [ ] **Phase 2: Core Drift-Free Timer Engine** - Implement wall-clock reference timer, start/pause/stop/continue mechanics, and sleep/wake listeners
+- [x] **Phase 2: Core Drift-Free Timer Engine** - Implement wall-clock reference timer, start/pause/stop/continue mechanics, and sleep/wake listeners
 - [ ] **Phase 3: Time Entries Log & Manual Tracking** - Deliver daily grouped entry lists, daily duration totals, inline editing, and manual logging
 - [ ] **Phase 4: Projects, Tasks, and Clients Management** - Build color-coded projects, task hierarchy, client entities, and entity filtering
 - [ ] **Phase 5: macOS Menu Bar Companion & Global Hotkeys** - Add MenuBarExtra live ticker, quick toggle menu, and system-wide keyboard shortcuts
@@ -62,8 +62,8 @@ Plans:
 
 Plans:
 
-- [ ] 02-01: Implement `TimeCalculator`, `@Observable class TimerManager`, and `SleepWakeMonitor` with unit tests for drift-free math.
-- [ ] 02-02: Build `ActiveTimerBar` UI with live duration display, project/task selector, and start/pause/stop controls.
+- [x] 02-01: Implement `TimeCalculator`, `@Observable class TimerManager`, and `SleepWakeMonitor` with unit tests for drift-free math.
+- [x] 02-02: Build `ActiveTimerBar` UI with live duration display, project/task selector, and start/pause/stop controls.
 
 ---
 
@@ -209,7 +209,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | Phase | Mode | Plans Complete | Status | Completed |
 |-------|------|----------------|--------|-----------|
 | 1. Scaffolding, Models & Shell | mvp | 2/2 | Complete | 2026-11-23 |
-| 2. Core Timer Engine | mvp | 0/2 | Planned | - |
+| 2. Core Timer Engine | mvp | 2/2 | Complete | 2026-11-23 |
 | 3. Entries Log & Manual Tracking | mvp | 0/2 | Not started | - |
 | 4. Projects, Tasks & Clients | mvp | 0/2 | Not started | - |
 | 5. Menu Bar Companion & Hotkeys | mvp | 0/2 | Not started | - |

@@ -12,12 +12,12 @@ Frictionless, accurate time tracking that stays out of the user's way while prov
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] Native macOS running timer with start, pause, stop, and continue actions (Validated in Phase 2)
+- [x] Timestamp-based drift-free elapsed time tracking that stays accurate across app minimization and Mac sleep/wake cycles (Validated in Phase 2)
+- [x] Local persistence layer with repository pattern designed for future CloudKit / cloud sync (Validated in Phase 1)
 
 ### Active
 
-- [ ] Native macOS running timer with start, pause, stop, and continue actions
-- [ ] Timestamp-based drift-free elapsed time tracking that stays accurate across app minimization and Mac sleep/wake cycles
 - [ ] Menu bar status item showing live timer ticker and quick start/stop controls
 - [ ] Global keyboard shortcut to toggle or start/stop the active timer from any app
 - [ ] Complete Time Entries management (create, edit description/times, delete, group by day/week)
@@ -28,7 +28,6 @@ Frictionless, accurate time tracking that stays out of the user's way while prov
 - [ ] Visual Reports view with productivity statistics, breakdown charts by project and client
 - [ ] Calendar view with daily and weekly timeline visualization of tracked entries
 - [ ] Preferences and Settings (Dark/Light mode toggles, shortcut customization, default timer behaviors)
-- [ ] SwiftData local persistence layer with modular architecture designed for future CloudKit / cloud sync
 
 ### Out of Scope
 
