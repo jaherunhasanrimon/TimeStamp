@@ -73,4 +73,19 @@ extension Color {
             opacity: Double(a) / 255
         )
     }
+
+    public func toHex() -> String {
+        #if os(macOS)
+        let nsColor = NSColor(self)
+        guard let rgbColor = nsColor.usingColorSpace(.sRGB) else {
+            return "#5C3BFE"
+        }
+        let r = Int(round(max(0, min(1, rgbColor.redComponent)) * 255))
+        let g = Int(round(max(0, min(1, rgbColor.greenComponent)) * 255))
+        let b = Int(round(max(0, min(1, rgbColor.blueComponent)) * 255))
+        return String(format: "#%02X%02X%02X", r, g, b)
+        #else
+        return "#5C3BFE"
+        #endif
+    }
 }

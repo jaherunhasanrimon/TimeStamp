@@ -17,7 +17,7 @@ public struct DetailContainerView: View {
                 case .timer:
                     EntriesListView()
                 case .projects:
-                    SkeletonRootView()
+                    ProjectsListView()
                 case .calendar, .dashboard, .reports, .clients, .settings:
                     placeholderView(for: destination!)
                 case .none:
