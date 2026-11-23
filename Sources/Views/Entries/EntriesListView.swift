@@ -44,6 +44,12 @@ public struct EntriesListView: View {
                 .tint(AppColors.brandAccent)
                 .keyboardShortcut("n", modifiers: .command)
                 .help("Log past time (⌘N)")
+                .sheet(isPresented: $isLogSheetPresented) {
+                    EntryEditSheet(mode: .manualLog(
+                        initialProjectId: timerManager.retainedProjectId,
+                        initialTaskId: timerManager.retainedTaskId
+                    ))
+                }
             }
             .padding(.horizontal, AppSpacing.lg)
             .padding(.vertical, AppSpacing.md)
@@ -83,6 +89,9 @@ public struct EntriesListView: View {
             }
         }
         .background(AppColors.background)
+        .sheet(item: $selectedEntryForEdit) { entry in
+            EntryEditSheet(mode: .edit(entry))
+        }
         .confirmationDialog(
             "Delete Time Entry?",
             isPresented: $isDeleteAlertPresented,

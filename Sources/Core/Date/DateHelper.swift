@@ -51,6 +51,20 @@ public enum DateHelper {
         }
     }
 
+    /// Combines the calendar day of `date` with the hour/minute/second of `time`
+    public static func combine(date: Date, time: Date, calendar: Calendar = .current) -> Date {
+        let dateComponents = calendar.dateComponents([.year, .month, .day], from: date)
+        let timeComponents = calendar.dateComponents([.hour, .minute, .second], from: time)
+        var merged = DateComponents()
+        merged.year = dateComponents.year
+        merged.month = dateComponents.month
+        merged.day = dateComponents.day
+        merged.hour = timeComponents.hour
+        merged.minute = timeComponents.minute
+        merged.second = timeComponents.second
+        return calendar.date(from: merged) ?? date
+    }
+
     public static func formatHumanDuration(_ interval: TimeInterval) -> String {
         let totalSeconds = max(0, Int(interval.rounded(.down)))
         let hours = totalSeconds / 3600

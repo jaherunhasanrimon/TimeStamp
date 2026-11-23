@@ -14,15 +14,14 @@ public struct DetailContainerView: View {
 
             Group {
                 switch destination {
+                case .timer:
+                    EntriesListView()
                 case .projects:
                     SkeletonRootView()
-                case .timer, .calendar, .dashboard, .reports, .clients, .settings:
+                case .calendar, .dashboard, .reports, .clients, .settings:
                     placeholderView(for: destination!)
                 case .none:
-                    Text("Select an item from the sidebar")
-                        .font(AppTypography.subheading)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    EntriesListView()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

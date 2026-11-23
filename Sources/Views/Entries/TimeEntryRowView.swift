@@ -117,7 +117,7 @@ public struct TimeEntryRowView: View {
         .onHover { hovering in
             isHovered = hovering
         }
-        .onTapGesture(count: 2) {
+        .onTapGesture {
             onEdit()
         }
         .contextMenu {
