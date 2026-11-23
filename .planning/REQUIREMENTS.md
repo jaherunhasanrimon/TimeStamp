@@ -61,9 +61,9 @@
 
 ### macOS System Integration & Menu Bar
 
-- [ ] **SYS-01**: User can view the active timer duration ticker in the macOS menu bar (`MenuBarExtra`)
-- [ ] **SYS-02**: User can start, pause, or stop the timer from the menu bar dropdown popup
-- [ ] **SYS-03**: User can trigger a global keyboard shortcut from any application to start/stop the active timer
+- [x] **SYS-01**: User can view the active timer duration ticker in the macOS menu bar (`MenuBarExtra`)
+- [x] **SYS-02**: User can start, pause, or stop the timer from the menu bar dropdown popup
+- [x] **SYS-03**: User can trigger a global keyboard shortcut from any application to start/stop the active timer
 
 ### Settings & Preferences
 
@@ -112,9 +112,9 @@
 | CLNT-01 | Phase 4 | Complete |
 | CLNT-02 | Phase 4 | Complete |
 | CLNT-03 | Phase 4 | Complete |
-| SYS-01 | Phase 5 | Pending |
-| SYS-02 | Phase 5 | Pending |
-| SYS-03 | Phase 5 | Pending |
+| SYS-01 | Phase 5 | Complete |
+| SYS-02 | Phase 5 | Complete |
+| SYS-03 | Phase 5 | Complete |
 | DASH-01 | Phase 6 | Pending |
 | DASH-02 | Phase 6 | Pending |
 | DASH-03 | Phase 6 | Pending |

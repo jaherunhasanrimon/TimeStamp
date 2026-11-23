@@ -131,8 +131,8 @@ Plans:
 
 Plans:
 
-- [ ] 05-01: Implement `MenuBarCompanionView` with `MenuBarExtra` scene, live ticker synchronization, and quick controls.
-- [ ] 05-02: Integrate `KeyboardShortcuts` framework and build `HotKeyManager` for system-wide timer toggle.
+- [x] 05-01: Build MenuBarExtra with live duration ticker, idle/running/paused state presentation, and popover window.
+- [x] 05-02: Implement Carbon global hotkey engine (⌥⇧T) for background timer toggling and window activation.
 
 ---
 
