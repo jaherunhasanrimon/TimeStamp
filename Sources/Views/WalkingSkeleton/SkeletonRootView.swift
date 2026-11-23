@@ -2,6 +2,7 @@ import SwiftUI
 
 public struct SkeletonRootView: View {
     @Environment(PersistenceStore.self) private var store
+    @Environment(TimerManager.self) private var timerManager
 
     @State private var newProjectName: String = ""
     @State private var selectedColorHex: String = AppColors.projectColors.first ?? "#5C3BFE"
@@ -18,7 +19,7 @@ public struct SkeletonRootView: View {
                             .font(AppTypography.heading)
                             .foregroundStyle(.primary)
 
-                        Text("Phase 1 Walking Skeleton: End-to-end native persistence & UI integration")
+                        Text("Manage projects and click 'Track' to start or continue timer sessions")
                             .font(AppTypography.body)
                             .foregroundStyle(.secondary)
                     }
@@ -116,6 +117,26 @@ public struct SkeletonRootView: View {
                                         .foregroundStyle(.primary)
 
                                     Spacer()
+
+                                    // Quick Track Button (TIMER-04)
+                                    Button {
+                                        timerManager.start(
+                                            description: "Working on \(project.name)",
+                                            projectId: project.id
+                                        )
+                                    } label: {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "play.fill")
+                                                .font(.system(size: 9))
+                                            Text("Track")
+                                                .font(AppTypography.caption)
+                                        }
+                                        .padding(.horizontal, AppSpacing.sm)
+                                        .padding(.vertical, 4)
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .tint(AppColors.brandAccent)
+                                    .help("Start timer with this project")
 
                                     Text(project.createdAt, style: .date)
                                         .font(AppTypography.caption)

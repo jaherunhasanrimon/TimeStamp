@@ -8,17 +8,24 @@ public struct DetailContainerView: View {
     }
 
     public var body: some View {
-        Group {
-            switch destination {
-            case .projects:
-                SkeletonRootView()
-            case .timer, .calendar, .dashboard, .reports, .clients, .settings:
-                placeholderView(for: destination!)
-            case .none:
-                Text("Select an item from the sidebar")
-                    .font(AppTypography.subheading)
-                    .foregroundStyle(.secondary)
+        VStack(spacing: 0) {
+            // Global Sticky Active Timer Bar (D-01)
+            ActiveTimerBar()
+
+            Group {
+                switch destination {
+                case .projects:
+                    SkeletonRootView()
+                case .timer, .calendar, .dashboard, .reports, .clients, .settings:
+                    placeholderView(for: destination!)
+                case .none:
+                    Text("Select an item from the sidebar")
+                        .font(AppTypography.subheading)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(AppColors.background)
@@ -38,7 +45,7 @@ public struct DetailContainerView: View {
                 .font(AppTypography.body)
                 .foregroundStyle(.secondary)
 
-            Text("Walking Skeleton active in Projects tab")
+            Text("Active Timer Bar & Timer Engine functional above")
                 .font(AppTypography.caption)
                 .padding(.horizontal, AppSpacing.sm)
                 .padding(.vertical, AppSpacing.xs)

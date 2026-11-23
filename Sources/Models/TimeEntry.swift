@@ -2,7 +2,18 @@ import Foundation
 import Observation
 
 @Observable
-public final class TimeEntry: Identifiable, Codable {
+public final class TimeEntry: Identifiable, Codable, Equatable {
+    public static func == (lhs: TimeEntry, rhs: TimeEntry) -> Bool {
+        lhs.id == rhs.id &&
+        lhs.entryDescription == rhs.entryDescription &&
+        lhs.startDate == rhs.startDate &&
+        lhs.endDate == rhs.endDate &&
+        lhs.accumulatedDuration == rhs.accumulatedDuration &&
+        lhs.isPaused == rhs.isPaused &&
+        lhs.projectId == rhs.projectId &&
+        lhs.taskId == rhs.taskId &&
+        lhs.tagIds == rhs.tagIds
+    }
     public let id: UUID
     public var entryDescription: String
     public var startDate: Date

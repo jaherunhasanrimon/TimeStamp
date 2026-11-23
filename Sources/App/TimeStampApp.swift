@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct TimeStampApp: App {
     @State private var store = PersistenceStore.shared
+    @State private var timerManager = TimerManager.shared
     @State private var selectedDestination: SidebarDestination? = .projects
 
     var body: some Scene {
@@ -19,6 +20,7 @@ struct TimeStampApp: App {
                 idealHeight: 700
             )
             .environment(store)
+            .environment(timerManager)
         }
         .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unified(showsTitle: false))
