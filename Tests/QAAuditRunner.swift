@@ -37,6 +37,22 @@ struct QAApp {
         assertTest("Fresh install has 0 clients", freshStore.clients.isEmpty)
         assertTest("Fresh install has 0 tasks", freshStore.tasks.isEmpty)
         assertTest("Fresh install has 0 tags", freshStore.tags.isEmpty)
+
+        // Regression Test: Simulated restart on empty store must NOT auto-seed sample goals
+        let restartedEmptyStore = PersistenceStore(inMemory: false, storageDirectory: tempDir)
+        assertTest("Simulated restart on empty store preserves 0 goals", restartedEmptyStore.goals.isEmpty)
+
+        // Regression Test: Adding user goal and restarting must never resurrect obsolete sample goals
+        let customGoal = Goal(title: "Research", targetDuration: 5400)
+        restartedEmptyStore.saveGoal(customGoal)
+        let restartedUserStore = PersistenceStore(inMemory: false, storageDirectory: tempDir)
+        assertTest("Simulated restart with user goal has exactly 1 goal", restartedUserStore.goals.count == 1)
+        assertTest("User goal title matches 'Research'", restartedUserStore.goals.first?.title == "Research")
+        let hasSampleGoals = restartedUserStore.goals.contains {
+            ["Daily Deep Work", "Academic & Tech Study", "Core Software Engineering", "Long-term Mastery Sprint"].contains($0.title)
+        }
+        assertTest("Obsolete sample goals NEVER resurrect after restart", !hasSampleGoals)
+
         try? FileManager.default.removeItem(at: tempDir)
 
         // -----------------------------------------------------------

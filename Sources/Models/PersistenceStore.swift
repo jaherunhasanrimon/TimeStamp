@@ -119,17 +119,6 @@ public final class PersistenceStore {
         }
     }
 
-    public func seedSampleGoalsIfNeeded() {
-        guard goals.isEmpty else { return }
-        self.goals = [
-            Goal(title: "Daily Deep Work", targetDuration: 45 * 60, cadence: .daily, iconName: "target"),
-            Goal(title: "Academic & Tech Study", targetDuration: 90 * 60, cadence: .daily, iconName: "book.fill"),
-            Goal(title: "Core Software Engineering", targetDuration: 120 * 60, cadence: .daily, iconName: "desktopcomputer"),
-            Goal(title: "Long-term Mastery Sprint", targetDuration: 180 * 60, cadence: .weekly, iconName: "chart.line.uptrend.xyaxis")
-        ]
-        save()
-    }
-
     // MARK: - Client CRUD
 
     public func saveClient(_ client: Client) {
