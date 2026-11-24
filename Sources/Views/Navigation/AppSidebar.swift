@@ -1,72 +1,97 @@
 import SwiftUI
 import AppKit
 
-public struct VisualEffectBackground: NSViewRepresentable {
-    public var material: NSVisualEffectView.Material
-    public var blendingMode: NSVisualEffectView.BlendingMode
-
-    public init(
-        material: NSVisualEffectView.Material = .sidebar,
-        blendingMode: NSVisualEffectView.BlendingMode = .behindWindow
-    ) {
-        self.material = material
-        self.blendingMode = blendingMode
-    }
-
-    public func makeNSView(context: Context) -> NSVisualEffectView {
-        let view = NSVisualEffectView()
-        view.material = material
-        view.blendingMode = blendingMode
-        view.state = .followsWindowActiveState
-        return view
-    }
-
-    public func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
-        nsView.material = material
-        nsView.blendingMode = blendingMode
-    }
-}
-
 public struct AppSidebar: View {
     @Binding public var selection: SidebarDestination?
+    public var onSwitchToCompact: (() -> Void)?
 
-    public init(selection: Binding<SidebarDestination?>) {
+    public init(
+        selection: Binding<SidebarDestination?>,
+        onSwitchToCompact: (() -> Void)? = nil
+    ) {
         self._selection = selection
+        self.onSwitchToCompact = onSwitchToCompact
     }
 
     public var body: some View {
-        List(selection: $selection) {
-            Section("Track") {
-                sidebarRow(for: .timer)
-                sidebarRow(for: .calendar)
-            }
+        VStack(spacing: 0) {
+            // Workspace Header (Toggl Track Style)
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(AppColors.togglMagenta)
+                        .frame(width: 22, height: 22)
 
-            Section("Analyze") {
-                sidebarRow(for: .dashboard)
-                sidebarRow(for: .reports)
-            }
+                    Image(systemName: "stopwatch.fill")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(Color.white)
+                }
 
-            Section("Manage") {
-                sidebarRow(for: .projects)
-                sidebarRow(for: .clients)
-            }
+                Text("TimeStamp")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Color.primary)
 
-            Section {
-                sidebarRow(for: .settings)
-            } header: {
-                Text("Preferences")
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+
+            Divider()
+                .overlay(AppColors.border)
+
+            List(selection: $selection) {
+                Section("TRACK") {
+                    sidebarRow(for: .timer)
+                    sidebarRow(for: .calendar)
+                }
+
+                Section("ANALYZE") {
+                    sidebarRow(for: .dashboard)
+                    sidebarRow(for: .reports)
+                }
+
+                Section("MANAGE") {
+                    sidebarRow(for: .projects)
+                    sidebarRow(for: .clients)
+                }
+
+                Section("ADMIN") {
+                    sidebarRow(for: .settings)
+                }
+            }
+            .listStyle(.sidebar)
+
+            if let onCompact = onSwitchToCompact {
+                Divider()
+                    .overlay(AppColors.border)
+
+                Button(action: onCompact) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.down.left.and.arrow.up.right")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(AppColors.togglMagenta)
+
+                        Text("Compact Tracker")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(Color.primary)
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                }
+                .buttonStyle(.plain)
             }
         }
-        .listStyle(.sidebar)
-        .background(VisualEffectBackground(material: .sidebar))
         .frame(minWidth: 200, idealWidth: 220)
+        .background(AppColors.cardBackground)
     }
 
     @ViewBuilder
     private func sidebarRow(for destination: SidebarDestination) -> some View {
         NavigationLink(value: destination) {
             Label(destination.rawValue, systemImage: destination.systemImage)
-                .font(AppTypography.body)
+                .font(.system(size: 13, weight: .regular))
         }
     }
 }

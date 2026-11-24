@@ -24,6 +24,9 @@ public struct EntryEditSheet: View {
     @State private var descriptionText: String
     @State private var selectedProjectId: UUID?
     @State private var selectedTaskId: UUID?
+    @State private var selectedTagIds: [UUID]
+    @State private var isBillable: Bool
+    @State private var isTagPickerPresented: Bool = false
     @State private var entryDate: Date
     @State private var startTime: Date
     @State private var endTime: Date
@@ -38,6 +41,8 @@ public struct EntryEditSheet: View {
             _descriptionText = State(initialValue: entry.entryDescription)
             _selectedProjectId = State(initialValue: entry.projectId)
             _selectedTaskId = State(initialValue: entry.taskId)
+            _selectedTagIds = State(initialValue: entry.tagIds)
+            _isBillable = State(initialValue: entry.isBillable)
             _entryDate = State(initialValue: entry.startDate)
             _startTime = State(initialValue: entry.startDate)
             let effectiveEnd = entry.endDate ?? entry.startDate.addingTimeInterval(max(60, entry.effectiveDuration))
@@ -50,6 +55,8 @@ public struct EntryEditSheet: View {
             _descriptionText = State(initialValue: "")
             _selectedProjectId = State(initialValue: initialProjectId)
             _selectedTaskId = State(initialValue: initialTaskId)
+            _selectedTagIds = State(initialValue: [])
+            _isBillable = State(initialValue: false)
             _entryDate = State(initialValue: now)
             _startTime = State(initialValue: hourAgo)
             _endTime = State(initialValue: now)
@@ -114,6 +121,76 @@ public struct EntryEditSheet: View {
                             selectedTaskId: $selectedTaskId
                         )
                         Spacer()
+                    }
+                }
+
+                // Billable Toggle & Tags (Priority 3)
+                HStack(spacing: AppSpacing.lg) {
+                    Toggle(isOn: $isBillable) {
+                        HStack(spacing: 4) {
+                            Text("$")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundStyle(isBillable ? AppColors.billable : Color.secondary)
+                            Text("Billable")
+                                .font(AppTypography.label)
+                        }
+                    }
+                    .toggleStyle(.checkbox)
+
+                    Spacer()
+
+                    Button(action: {
+                        isTagPickerPresented.toggle()
+                    }) {
+                        HStack(spacing: 5) {
+                            Image(systemName: selectedTagIds.isEmpty ? "tag" : "tag.fill")
+                                .font(.system(size: 12))
+                                .foregroundStyle(selectedTagIds.isEmpty ? Color.secondary : AppColors.togglMagenta)
+
+                            Text(selectedTagIds.isEmpty ? "Add tags..." : "\(selectedTagIds.count) tag(s)")
+                                .font(AppTypography.caption)
+                                .foregroundStyle(selectedTagIds.isEmpty ? .secondary : .primary)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(AppColors.secondaryCardBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: AppSpacing.radiusSmall))
+                    }
+                    .buttonStyle(.plain)
+                    .popover(isPresented: $isTagPickerPresented, arrowEdge: .bottom) {
+                        TagPickerPopover(
+                            selectedTagIds: $selectedTagIds,
+                            onDismiss: { isTagPickerPresented = false }
+                        )
+                    }
+                }
+
+                if !selectedTagIds.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(selectedTagIds, id: \.self) { tagId in
+                                if let tag = store.tags.first(where: { $0.id == tagId }) {
+                                    HStack(spacing: 4) {
+                                        Text("#\(tag.name)")
+                                            .font(.system(size: 11, weight: .medium))
+                                            .foregroundStyle(Color.white)
+
+                                        Button(action: {
+                                            selectedTagIds.removeAll { $0 == tagId }
+                                        }) {
+                                            Image(systemName: "xmark")
+                                                .font(.system(size: 9, weight: .bold))
+                                                .foregroundStyle(Color.white.opacity(0.8))
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(Color(hex: tag.colorHex).opacity(0.85))
+                                    .clipShape(Capsule())
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -233,6 +310,11 @@ public struct EntryEditSheet: View {
                 durationSeconds = 60
             }
         }
+        .onChange(of: selectedProjectId) { _, newProjectId in
+            if let pId = newProjectId, let project = store.project(for: pId), project.isBillableDefault {
+                isBillable = true
+            }
+        }
     }
 
     private func adjustDuration(by delta: TimeInterval) {
@@ -248,15 +330,18 @@ public struct EntryEditSheet: View {
         }
 
         let trimmedDesc = descriptionText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let duration = max(0, endTime.timeIntervalSince(startTime))
 
         switch mode {
         case .edit(let entry):
             entry.entryDescription = trimmedDesc
             entry.projectId = selectedProjectId
             entry.taskId = selectedTaskId
+            entry.tagIds = selectedTagIds
+            entry.isBillable = isBillable
             entry.startDate = startTime
             entry.endDate = endTime
-            entry.accumulatedDuration = 0
+            entry.accumulatedDuration = duration
             entry.isPaused = false
             entry.updatedAt = Date()
             store.saveTimeEntry(entry)
@@ -266,19 +351,22 @@ public struct EntryEditSheet: View {
                 entryDescription: trimmedDesc,
                 startDate: startTime,
                 endDate: endTime,
-                accumulatedDuration: 0,
+                accumulatedDuration: duration,
                 isPaused: false,
                 createdAt: Date(),
                 updatedAt: Date(),
                 projectId: selectedProjectId,
                 taskId: selectedTaskId,
-                tagIds: []
+                tagIds: selectedTagIds,
+                isBillable: isBillable
             )
             store.saveTimeEntry(newEntry)
 
-            // Retain last selected project/task for chained work
+            // Retain last selected project/task/tags/billable for chained work
             timerManager.retainedProjectId = selectedProjectId
             timerManager.retainedTaskId = selectedTaskId
+            timerManager.retainedTagIds = selectedTagIds
+            timerManager.retainedIsBillable = isBillable
         }
 
         dismiss()

@@ -4,6 +4,7 @@ import AppKit
 public struct MenuBarPopoverView: View {
     @Environment(PersistenceStore.self) private var store
     @Environment(TimerManager.self) private var timerManager
+    @Environment(PomodoroManager.self) private var pomodoroManager
 
     @State private var draftDescription: String = ""
     @State private var selectedProjectId: UUID? = nil
@@ -39,6 +40,40 @@ public struct MenuBarPopoverView: View {
                 Text(currentDurationText)
                     .font(Font.system(size: 20, weight: .bold, design: .default).monospacedDigit())
                     .foregroundStyle(timerManager.isPaused ? Color.orange : (timerManager.isRunning ? .primary : .secondary))
+            }
+
+            if pomodoroManager.isRunning {
+                HStack {
+                    HStack(spacing: 6) {
+                        Text("🍅")
+                        Text("\(pomodoroManager.sessionType.rawValue): \(pomodoroManager.formattedRemainingTime)")
+                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(pomodoroManager.sessionType == .work ? AppColors.togglMagenta : AppColors.success)
+                    }
+
+                    Spacer()
+
+                    Button(action: {
+                        if pomodoroManager.isPaused {
+                            pomodoroManager.resume()
+                        } else {
+                            pomodoroManager.pause()
+                        }
+                    }) {
+                        Text(pomodoroManager.isPaused ? "Resume" : "Pause")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(Color.primary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(AppColors.secondaryCardBackground)
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(AppColors.insetBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
             }
 
             Divider()
@@ -234,10 +269,13 @@ public struct MenuBarPopoverView: View {
 
     private func startTimer() {
         let trimmed = draftDescription.trimmingCharacters(in: .whitespaces)
+        let isBillable = selectedProjectId.flatMap { store.project(for: $0)?.isBillableDefault } ?? timerManager.retainedIsBillable
         timerManager.start(
             description: trimmed,
             projectId: selectedProjectId,
-            taskId: selectedTaskId
+            taskId: selectedTaskId,
+            tagIds: timerManager.retainedTagIds,
+            isBillable: isBillable
         )
     }
 

@@ -1,0 +1,25 @@
+feature,area,priority,original,clone,notes
+Floating Compact Tracker Window (420px),window,must,yes,yes,CompactTrackerView with expand/compact toggle
+Dark Plum & Aubergine Visual Theme,design,must,yes,yes,Dark plum #14101A and cream #FDFBFA palette
+Magenta Circular Start/Stop Button,timer,must,yes,yes,CircularPlayButton with #E54583 magenta and #FF453A red
+Sticky Top Timer Bar with Monospace Duration,timer,must,yes,yes,Two-row ActiveTimerBar with monospace ticker
+Inline Project / Task / Billable Actions,timer,must,yes,yes,Project folder icon tag icon and dollar billable toggle
+Search-first Project/Task Popover with Client Grouping,projects,must,yes,yes,ProjectPickerPopover with green focus border and client groups
+Segmented Capsule Switcher (List | Calendar),navigation,must,yes,yes,CapsuleViewSwitcher with magenta underline
+Daily Time Entries Grouped by Date,log,must,yes,yes,Toggl-style DayGroupHeaderView and TimeEntryRowView
+Entry Play-Again Duplicate Action,log,must,yes,yes,Hover play-again button on entry row
+Calendar Timeline (Day/Week view),calendar,must,yes,yes,Interactive schedule grid with project pastel blocks
+Reports Summary Dashboard with 4 KPI Cards,reports,must,yes,yes,ReportsView with 4 KPI cards and subnav tabs
+Duration by Day Chart Card,reports,must,yes,yes,Swift Charts bar chart with empty binoculars state
+Client / Project Distribution Donut Chart Card,reports,must,yes,yes,Swift Charts donut chart with center project total
+Empty State Illustration with Playful Copy,ui,should,yes,yes,TogglEmptyStateView with typing hands and purple binoculars
+Collapsible Goals (Progress) Section,goals,must,yes,yes,Multi-criteria matching (projects/clients/tasks/tags/billable) At-least and Less-than targets daily/weekday/weekly cadence live editor preview and anti-double-counting (16 tests passing)
+Pomodoro Timer Toggle Button,timer,must,yes,yes,Dedicated PomodoroManager with 4-cycle state machine 25m work/5m break/15m long break popover timer sync break isolation and UNUserNotificationCenter notifications (7 tests passing)
+macOS System Menu Bar Companion,system,must,yes,yes,Working with live duration Pomodoro status and popover
+Global Hotkey (⌥⇧T) to Toggle Timer,system,must,yes,yes,Working registered global hotkey
+CSV & JSON Export,export,must,yes,yes,Working native export service
+Local Persistence with Offline Readiness,data,must,yes,yes,SwiftData persistence store working
+Billable Tracking & Hourly Rates,timer,must,yes,yes,ActiveTimerBar $ toggle TimeEntry.isBillable persistence project/client hourly rate overrides and Reports revenue calculation (8 tests passing)
+Tag Management & Multi-Tag Filtering,tags,must,yes,yes,TagPickerPopover with search inline creation multi-tag selection entry row tag pills and tag-based list/report filtering (8 tests passing)
+Safe Backup & Clean State Reset,data,must,yes,yes,Zero false seeded time on fresh install automatic timestamped JSON backups in Application Support and non-destructive reset
+Duration Invariance & Anti-Double-Counting,timer,must,yes,yes,Exact effectiveDuration across running paused stopped manual and edited entries eliminating double-counting bug

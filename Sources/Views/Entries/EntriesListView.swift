@@ -47,6 +47,8 @@ public struct EntriesListView: View {
                 guard let pId = entry.projectId else { return false }
                 return clientProjectIds.contains(pId)
             }
+        case .tag(let tagId):
+            return store.timeEntries.filter { $0.tagIds.contains(tagId) }
         }
     }
 
@@ -64,6 +66,9 @@ public struct EntriesListView: View {
         case .client(let id):
             let name = store.clients.first(where: { $0.id == id })?.name ?? "Client"
             return "Client: \(name)"
+        case .tag(let id):
+            let name = store.tags.first(where: { $0.id == id })?.name ?? "Tag"
+            return "Tag: #\(name)"
         }
     }
 
@@ -122,6 +127,22 @@ public struct EntriesListView: View {
                                     Label(client.name, systemImage: "checkmark")
                                 } else {
                                     Text(client.name)
+                                }
+                            }
+                        }
+                    }
+
+                    if !store.tags.isEmpty {
+                        Divider()
+                        Text("Tags")
+                        ForEach(store.tags) { tag in
+                            Button {
+                                activeFilterBinding.wrappedValue = .tag(tag.id)
+                            } label: {
+                                if currentFilter == .tag(tag.id) {
+                                    Label("#\(tag.name)", systemImage: "checkmark")
+                                } else {
+                                    Text("#\(tag.name)")
                                 }
                             }
                         }
@@ -251,43 +272,23 @@ public struct EntriesListView: View {
     }
 
     private var emptyStateView: some View {
-        VStack(spacing: AppSpacing.md) {
-            Image(systemName: currentFilter != .none ? "line.3.horizontal.decrease.circle" : "stopwatch")
-                .font(.system(size: 48, weight: .light))
-                .foregroundStyle(AppColors.brandAccent)
-
-            Text(currentFilter != .none ? "No matching entries" : "No time entries yet")
-                .font(AppTypography.heading)
-
-            Text(currentFilter != .none
-                 ? "No time entries match the selected filter “\(filterDescription)”."
-                 : "Start the timer in the top bar or press ⌘N to log past work.")
-                .font(AppTypography.body)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 320)
-
+        Group {
             if currentFilter != .none {
-                Button("Clear Filter") {
-                    activeFilterBinding.wrappedValue = .none
-                }
-                .buttonStyle(.bordered)
-                .padding(.top, AppSpacing.xs)
+                TogglEmptyStateView(
+                    style: .binoculars(
+                        title: "No entries found in the selected period",
+                        subtitle: "There's no activity here matching “\(filterDescription)” — try a different filter or clear filters.",
+                        buttonTitle: "Clear filter",
+                        onAction: {
+                            activeFilterBinding.wrappedValue = .none
+                        }
+                    )
+                )
             } else {
-                Button {
-                    isLogSheetPresented = true
-                } label: {
-                    HStack(spacing: AppSpacing.xs) {
-                        Image(systemName: "plus")
-                        Text("Log Time Entry")
-                    }
-                    .font(AppTypography.label)
-                }
-                .buttonStyle(.bordered)
-                .padding(.top, AppSpacing.xs)
+                TogglEmptyStateView(style: .letsGetTracking)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(AppSpacing.xxl)
+        .padding(.vertical, 40)
     }
 }

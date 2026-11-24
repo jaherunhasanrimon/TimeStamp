@@ -12,6 +12,7 @@ public enum DateRangePreset: String, CaseIterable, Identifiable {
 public enum ReportDimension: String, CaseIterable, Identifiable {
     case projects = "By Project"
     case clients = "By Client"
+    case tags = "By Tag"
 
     public var id: String { rawValue }
 }
@@ -124,6 +125,55 @@ public struct ReportsView: View {
                 )
             }
             .sorted { $0.duration > $1.duration }
+
+        case .tags:
+            var tagDurations: [UUID?: (name: String, colorHex: String, duration: TimeInterval)] = [:]
+            for entry in filteredEntries {
+                let duration = entry.effectiveDuration
+                if entry.tagIds.isEmpty {
+                    if let cur = tagDurations[nil] {
+                        tagDurations[nil] = (cur.name, cur.colorHex, cur.duration + duration)
+                    } else {
+                        tagDurations[nil] = ("No Tag", "#8E8E93", duration)
+                    }
+                } else {
+                    for tagId in entry.tagIds {
+                        let tag = store.tags.first(where: { $0.id == tagId })
+                        let name = tag?.name ?? "Unknown Tag"
+                        let colorHex = tag?.colorHex ?? "#E54583"
+                        if let cur = tagDurations[tagId] {
+                            tagDurations[tagId] = (cur.name, cur.colorHex, cur.duration + duration)
+                        } else {
+                            tagDurations[tagId] = ("#\(name)", colorHex, duration)
+                        }
+                    }
+                }
+            }
+            return tagDurations.map { tagId, data in
+                let percent = (data.duration / total) * 100.0
+                return BreakdownItem(
+                    id: tagId ?? UUID(),
+                    name: data.name,
+                    colorHex: data.colorHex,
+                    duration: data.duration,
+                    percentage: percent
+                )
+            }
+            .sorted { $0.duration > $1.duration }
+        }
+    }
+
+    private var billableDuration: TimeInterval {
+        filteredEntries.filter { $0.isBillable }.reduce(0.0) { $0 + $1.effectiveDuration }
+    }
+
+    private var billableAmount: Double {
+        filteredEntries.reduce(0.0) { sum, entry in
+            guard entry.isBillable else { return sum }
+            let rate = entry.projectId.flatMap { store.project(for: $0)?.hourlyRate }
+                ?? entry.projectId.flatMap { store.project(for: $0)?.clientId }.flatMap { store.client(for: $0)?.hourlyRate }
+                ?? 50.0
+            return sum + (entry.effectiveDuration / 3600.0) * rate
         }
     }
 
@@ -214,12 +264,28 @@ public struct ReportsView: View {
                     }
                 }
 
-                // Summary Metric Cards Strip
+                // 4 Toggl Track KPI Metric Cards Strip (Reference Images 4 & 8)
                 HStack(spacing: AppSpacing.md) {
-                    summaryCard(title: "Total Tracked Time", value: DateHelper.formatHumanDuration(totalDuration), icon: "clock")
-                    summaryCard(title: "Daily Average", value: DateHelper.formatHumanDuration(dailyAverage), icon: "chart.bar")
-                    summaryCard(title: "Top \(selectedDimension == .projects ? "Project" : "Client")", value: topEntityName, icon: selectedDimension == .projects ? "folder.fill" : "person.2.fill")
-                    summaryCard(title: "Total Sessions", value: "\(filteredEntries.count)", icon: "list.bullet")
+                    summaryCard(
+                        title: "TOTAL HOURS",
+                        value: totalDuration > 0 ? DateHelper.formatHumanDuration(totalDuration) : "0h 0m",
+                        icon: "clock"
+                    )
+                    summaryCard(
+                        title: "BILLABLE HOURS",
+                        value: billableDuration > 0 ? DateHelper.formatHumanDuration(billableDuration) : "0h 0m",
+                        icon: "dollarsign.circle"
+                    )
+                    summaryCard(
+                        title: "AMOUNT",
+                        value: String(format: "$%.2f", billableAmount),
+                        icon: "banknote"
+                    )
+                    summaryCard(
+                        title: "AVERAGE DAILY HOURS",
+                        value: dailyAverage > 0 ? DateHelper.formatHumanDuration(dailyAverage) : "0h 0m",
+                        icon: "chart.bar"
+                    )
                 }
 
                 // Main Analytics Card: Donut Chart + Breakdown Table

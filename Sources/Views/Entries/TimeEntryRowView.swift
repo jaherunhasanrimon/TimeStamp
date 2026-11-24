@@ -1,5 +1,9 @@
 import SwiftUI
 
+/// Toggl Track Time Entry Row View (Reference Image 5).
+/// Line 1: Description
+/// Line 2: • Project Name (with colored circle dot) • Task • Client
+/// Right: $ (Billable) + Monospace Duration + Play-Again Action
 public struct TimeEntryRowView: View {
     @Environment(PersistenceStore.self) private var store
     @Environment(TimerManager.self) private var timerManager
@@ -26,147 +30,135 @@ public struct TimeEntryRowView: View {
         return store.tasks.first(where: { $0.id == id })
     }
 
+    private var client: Client? {
+        guard let p = project, let cId = p.clientId else { return nil }
+        return store.clients.first(where: { $0.id == cId })
+    }
+
     public var body: some View {
-        HStack(spacing: AppSpacing.md) {
-            // Left: Project Swatch, Task & Description
-            HStack(spacing: AppSpacing.sm) {
-                if let project = project {
-                    Circle()
-                        .fill(Color(hex: project.colorHex))
-                        .frame(width: 8, height: 8)
-
-                    Text(project.name)
-                        .font(AppTypography.label)
-                        .foregroundStyle(Color(hex: project.colorHex))
-
-                    if let task = task {
-                        Text("•")
-                            .font(AppTypography.caption)
-                            .foregroundStyle(.secondary)
-                        Text(task.name)
-                            .font(AppTypography.caption)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Text("—")
-                        .font(AppTypography.caption)
-                        .foregroundStyle(.tertiary)
-                }
-
+        HStack(spacing: 12) {
+            // Left Column: Description (Line 1) and Project/Client Dot (Line 2)
+            VStack(alignment: .leading, spacing: 3) {
                 Text(entry.entryDescription.isEmpty ? "(No description)" : entry.entryDescription)
-                    .font(AppTypography.body)
-                    .foregroundStyle(entry.entryDescription.isEmpty ? .secondary : .primary)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(entry.entryDescription.isEmpty ? .secondary : Color.primary)
                     .lineLimit(1)
-            }
 
-            Spacer()
+                HStack(spacing: 6) {
+                    if let project = project {
+                        Circle()
+                            .fill(Color(hex: project.colorHex))
+                            .frame(width: 7, height: 7)
 
-            // Right: Time Range & Duration
-            HStack(spacing: AppSpacing.md) {
-                Text(DateHelper.formatTimeRange(start: entry.startDate, end: entry.endDate))
-                    .font(AppTypography.caption)
-                    .foregroundStyle(.secondary)
+                        Text(project.name)
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundStyle(Color(hex: project.colorHex))
 
-                Text(TimeCalculator.formatDuration(entry.effectiveDuration))
-                    .font(AppTypography.subTicker)
-                    .foregroundStyle(entry.isRunning ? AppColors.brandAccent : .primary)
-                    .frame(minWidth: 65, alignment: .trailing)
-
-                // Hover Actions
-                HStack(spacing: AppSpacing.xs) {
-                    if isHovered {
-                        Button {
-                            timerManager.continueEntry(entry)
-                        } label: {
-                            Image(systemName: "play.fill")
-                                .font(.system(size: 10))
-                                .foregroundStyle(AppColors.brandAccent)
-                                .frame(width: 22, height: 22)
-                        }
-                        .buttonStyle(.plain)
-                        .background(AppColors.cardBackground)
-                        .clipShape(Circle())
-                        .help("Continue tracking")
-
-                        Button {
-                            onDelete()
-                        } label: {
-                            Image(systemName: "trash")
+                        if let task = task {
+                            Text("• \(task.name)")
                                 .font(.system(size: 11))
                                 .foregroundStyle(.secondary)
-                                .frame(width: 22, height: 22)
                         }
-                        .buttonStyle(.plain)
-                        .help("Delete entry")
+
+                        if let client = client {
+                            Text("• \(client.name)")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        }
                     } else {
-                        Color.clear
-                            .frame(width: 48, height: 22)
+                        Text("• No Project")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
                     }
+
+                    // Tag Badges
+                    if !entry.tagIds.isEmpty {
+                        ForEach(entry.tagIds, id: \.self) { tagId in
+                            if let tag = store.tags.first(where: { $0.id == tagId }) {
+                                Text("#\(tag.name)")
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundStyle(Color(hex: tag.colorHex).opacity(0.9))
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 1.5)
+                                    .background(Color(hex: tag.colorHex).opacity(0.15))
+                                    .clipShape(Capsule())
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            // Right Column: Billable $ + Monospace Duration + Play-Again Hover
+            HStack(spacing: 10) {
+                if entry.isBillable {
+                    Text("$")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(AppColors.billable)
+                }
+
+                Text(TimeCalculator.formatDuration(entry.effectiveDuration))
+                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(Color.primary)
+
+                if isHovered {
+                    // Play-Again Quick Action
+                    Button(action: startCopyTimer) {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(Color.white)
+                            .frame(width: 22, height: 22)
+                            .background(AppColors.togglMagenta)
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("Continue tracking this entry")
+                    .transition(.opacity)
                 }
             }
         }
-        .padding(.horizontal, AppSpacing.md)
-        .padding(.vertical, AppSpacing.sm)
-        .background(isHovered ? AppColors.cardBackground.opacity(0.8) : AppColors.cardBackground.opacity(0.4))
-        .clipShape(RoundedRectangle(cornerRadius: AppSpacing.radiusSmall))
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(isHovered ? AppColors.secondaryCardBackground : AppColors.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 6))
         .overlay(
-            RoundedRectangle(cornerRadius: AppSpacing.radiusSmall)
-                .stroke(AppColors.subtleBorder, lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(AppColors.border.opacity(0.8), lineWidth: 0.8)
         )
         .contentShape(Rectangle())
         .onHover { hovering in
-            isHovered = hovering
+            withAnimation(.easeInOut(duration: 0.12)) {
+                isHovered = hovering
+            }
         }
         .onTapGesture {
             onEdit()
         }
         .contextMenu {
-            Button {
-                timerManager.continueEntry(entry)
-            } label: {
-                Label("Continue Timer", systemImage: "play.fill")
+            Button("Continue tracking") {
+                startCopyTimer()
             }
 
-            Button {
+            Button("Edit details...") {
                 onEdit()
-            } label: {
-                Label("Edit...", systemImage: "pencil")
-            }
-
-            Button {
-                duplicateEntry()
-            } label: {
-                Label("Duplicate Entry", systemImage: "doc.on.doc")
             }
 
             Divider()
 
-            Button(role: .destructive) {
+            Button("Delete entry", role: .destructive) {
                 onDelete()
-            } label: {
-                Label("Delete...", systemImage: "trash")
-            }
-        }
-        .swipeActions(edge: .trailing) {
-            Button(role: .destructive) {
-                onDelete()
-            } label: {
-                Label("Delete", systemImage: "trash")
             }
         }
     }
 
-    private func duplicateEntry() {
-        let duplicate = TimeEntry(
-            entryDescription: entry.entryDescription,
-            startDate: Date(),
-            endDate: Date().addingTimeInterval(entry.effectiveDuration),
-            accumulatedDuration: entry.accumulatedDuration,
-            isPaused: false,
+    private func startCopyTimer() {
+        timerManager.start(
+            description: entry.entryDescription,
             projectId: entry.projectId,
             taskId: entry.taskId,
-            tagIds: entry.tagIds
+            tagIds: entry.tagIds,
+            isBillable: entry.isBillable
         )
-        store.saveTimeEntry(duplicate)
     }
 }

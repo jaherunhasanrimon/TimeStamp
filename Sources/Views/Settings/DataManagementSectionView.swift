@@ -55,11 +55,11 @@ public struct DataManagementSectionView: View {
                 // Reset All Data
                 HStack {
                     VStack(alignment: .leading, spacing: 1) {
-                        Text("Reset All Data")
+                        Text("Reset to Clean State")
                             .font(AppTypography.body)
                             .fontWeight(.medium)
                             .foregroundStyle(AppColors.destructive)
-                        Text("Permanently deletes all projects, clients, tasks, and time entries.")
+                        Text("Creates a timestamped backup, then resets your workspace to a clean state with zero tracked time.")
                             .font(AppTypography.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -67,7 +67,7 @@ public struct DataManagementSectionView: View {
                     Spacer()
 
                     Button(role: .destructive, action: { showResetAlert = true }) {
-                        Label("Reset All Data...", systemImage: "trash.fill")
+                        Label("Backup & Reset...", systemImage: "trash.fill")
                             .font(AppTypography.label)
                     }
                     .buttonStyle(.borderedProminent)
@@ -83,13 +83,13 @@ public struct DataManagementSectionView: View {
             RoundedRectangle(cornerRadius: AppSpacing.radiusCard)
                 .stroke(AppColors.border, lineWidth: 0.5)
         )
-        .alert("Reset All Data?", isPresented: $showResetAlert) {
+        .alert("Backup and Reset Workspace?", isPresented: $showResetAlert) {
             Button("Cancel", role: .cancel) {}
-            Button("Reset Everything", role: .destructive) {
-                store.clearAll()
+            Button("Create Backup & Reset", role: .destructive) {
+                _ = store.resetToCleanState(createBackup: true)
             }
         } message: {
-            Text("This will permanently delete all projects, clients, tasks, and time entries. This action cannot be undone.")
+            Text("A timestamped backup of your current data will be saved to your Application Support folder before resetting to a fresh, clean workspace.")
         }
     }
 

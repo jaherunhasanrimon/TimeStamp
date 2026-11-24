@@ -1,123 +1,268 @@
 import SwiftUI
 
+/// Toggl Track Authentic Two-Row Active Timer Bar.
+/// Row 1: Pomodoro Tomato + Description + Monospace Ticker + Circular Magenta Play Button (#E54583) + Mode Toggle
+/// Row 2: 📁 Project Picker + 🏷️ Tags + 💲 Billable Toggle
 public struct ActiveTimerBar: View {
     @Environment(TimerManager.self) private var timerManager
     @Environment(PersistenceStore.self) private var store
+    @Environment(PomodoroManager.self) private var pomodoroManager
 
     @State private var descriptionText: String = ""
     @State private var selectedProjectId: UUID?
     @State private var selectedTaskId: UUID?
+    @State private var selectedTagIds: [UUID] = []
+    @State private var isBillable: Bool = false
+    @State private var isProjectPickerPresented: Bool = false
+    @State private var isTagPickerPresented: Bool = false
+    @State private var isPomodoroPopoverPresented: Bool = false
+    @State private var isManualLogSheetPresented: Bool = false
 
     public init() {}
 
-    public var body: some View {
-        HStack(spacing: AppSpacing.md) {
-            // Description Field (D-03, D-05)
-            HStack(spacing: AppSpacing.xs) {
-                Image(systemName: "pencil.line")
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
+    private var selectedProject: Project? {
+        guard let id = selectedProjectId else { return nil }
+        return store.projects.first(where: { $0.id == id })
+    }
 
+    private var selectedTask: Task? {
+        guard let id = selectedTaskId else { return nil }
+        return store.tasks.first(where: { $0.id == id })
+    }
+
+    public var body: some View {
+        VStack(spacing: 8) {
+            // ROW 1: Pomodoro Icon + Description Field + Duration + Play Button + Mode Icon
+            HStack(spacing: 10) {
+                // Tomato Pomodoro Icon Button
+                Button(action: {
+                    isPomodoroPopoverPresented.toggle()
+                }) {
+                    ZStack {
+                        Circle()
+                            .fill(pomodoroManager.isRunning ? AppColors.togglMagenta.opacity(0.18) : AppColors.insetBackground)
+                            .frame(width: 28, height: 28)
+
+                        if pomodoroManager.isRunning {
+                            Circle()
+                                .stroke(
+                                    pomodoroManager.sessionType == .work ? AppColors.togglMagenta : AppColors.success,
+                                    lineWidth: 1.5
+                                )
+                                .frame(width: 28, height: 28)
+                        }
+
+                        Text("🍅")
+                            .font(.system(size: 14))
+                    }
+                }
+                .buttonStyle(.plain)
+                .help(pomodoroManager.isRunning
+                      ? "Pomodoro: \(pomodoroManager.formattedRemainingTime) (\(pomodoroManager.sessionType.rawValue))"
+                      : "Pomodoro Focus Timer")
+                .popover(isPresented: $isPomodoroPopoverPresented, arrowEdge: .bottom) {
+                    PomodoroPopoverView(onDismiss: {
+                        isPomodoroPopoverPresented = false
+                    })
+                }
+
+                // Borderless Description Field
                 TextField("What are you working on?", text: $descriptionText)
                     .textFieldStyle(.plain)
-                    .font(AppTypography.body)
+                    .font(.system(size: 14))
                     .onSubmit {
                         handleReturnKey()
                     }
+
+                Spacer(minLength: 8)
+
+                // Monospaced Duration Ticker
+                Text(timerManager.formattedDuration)
+                    .font(.system(size: 15, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(timerManager.isRunning ? Color.primary : .secondary)
+
+                // Circular Magenta Start/Stop Button (#E54583 / #FF453A)
+                CircularPlayButton(
+                    isRunning: timerManager.isRunning,
+                    isPaused: timerManager.isPaused,
+                    onToggle: {
+                        if timerManager.isRunning {
+                            stopTimer()
+                        } else {
+                            startTimer()
+                        }
+                    },
+                    onPauseToggle: timerManager.isRunning ? togglePause : nil
+                )
+
+                // Manual Entry Mode Button (Stacked play / plus icon)
+                Button(action: {
+                    isManualLogSheetPresented = true
+                }) {
+                    ZStack {
+                        Circle()
+                            .fill(AppColors.secondaryCardBackground)
+                            .frame(width: 22, height: 22)
+
+                        Image(systemName: "plus")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+                .help("Manual time entry")
             }
-            .padding(.horizontal, AppSpacing.sm)
-            .padding(.vertical, 6)
-            .background(AppColors.secondaryCardBackground.opacity(0.6))
-            .clipShape(RoundedRectangle(cornerRadius: AppSpacing.radiusSmall))
 
-            // Project / Task Selector (D-04)
-            ProjectTaskPickerButton(
-                selectedProjectId: $selectedProjectId,
-                selectedTaskId: $selectedTaskId
-            )
+            // ROW 2: Sub-toolbar containing 📁 Folder, 🏷️ Tags, and 💲 Billable
+            HStack(spacing: 12) {
+                // 📁 Project / Task Picker Button
+                Button(action: {
+                    isProjectPickerPresented.toggle()
+                }) {
+                    HStack(spacing: 5) {
+                        if let project = selectedProject {
+                            Circle()
+                                .fill(Color(hex: project.colorHex))
+                                .frame(width: 8, height: 8)
 
-            Spacer()
+                            Text(project.name)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(Color.primary)
 
-            // Live Monospaced Duration Ticker (D-07, D-15)
-            Text(timerManager.formattedDuration)
-                .font(AppTypography.ticker)
-                .foregroundStyle(timerManager.isRunning ? .primary : .secondary)
-                .padding(.horizontal, AppSpacing.xs)
-
-            // Timer Controls (D-02, D-08)
-            HStack(spacing: AppSpacing.sm) {
-                if timerManager.activeEntry != nil {
-                    // Pause / Resume Button
-                    Button(action: togglePause) {
-                        Image(systemName: timerManager.isPaused ? "play.fill" : "pause.fill")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.primary)
-                            .frame(width: 28, height: 28)
+                            if let task = selectedTask {
+                                Text("• \(task.name)")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                            }
+                        } else {
+                            Image(systemName: "folder")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.secondary)
+                        }
                     }
-                    .buttonStyle(.plain)
-                    .background(AppColors.secondaryCardBackground)
-                    .clipShape(Circle())
-                    .help(timerManager.isPaused ? "Resume timer" : "Pause timer")
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(selectedProject != nil ? AppColors.secondaryCardBackground : Color.clear)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                }
+                .buttonStyle(.plain)
+                .popover(isPresented: $isProjectPickerPresented, arrowEdge: .bottom) {
+                    ProjectPickerPopover(
+                        selectedProjectId: $selectedProjectId,
+                        selectedTaskId: $selectedTaskId,
+                        onDismiss: {
+                            isProjectPickerPresented = false
+                        }
+                    )
+                }
 
-                    // Stop Button
-                    Button(action: stopTimer) {
-                        Image(systemName: "stop.fill")
+                // 🏷️ Tag Button
+                Button(action: {
+                    isTagPickerPresented.toggle()
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: selectedTagIds.isEmpty ? "tag" : "tag.fill")
                             .font(.system(size: 12))
-                            .foregroundStyle(.white)
-                            .frame(width: 32, height: 32)
-                    }
-                    .buttonStyle(.plain)
-                    .background(Color(hex: "#FF375F"))
-                    .clipShape(RoundedRectangle(cornerRadius: AppSpacing.radiusButton))
-                    .help("Stop & save entry (Return)")
+                            .foregroundStyle(selectedTagIds.isEmpty ? Color.secondary : AppColors.togglMagenta)
 
-                    // Discard Button (D-08)
+                        if !selectedTagIds.isEmpty {
+                            Text("\(selectedTagIds.count)")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(AppColors.togglMagenta)
+                        }
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(!selectedTagIds.isEmpty ? AppColors.togglMagenta.opacity(0.12) : Color.clear)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                }
+                .buttonStyle(.plain)
+                .help(selectedTagIds.isEmpty ? "Add tags" : "\(selectedTagIds.count) tag(s) selected")
+                .popover(isPresented: $isTagPickerPresented, arrowEdge: .bottom) {
+                    TagPickerPopover(
+                        selectedTagIds: $selectedTagIds,
+                        onDismiss: {
+                            isTagPickerPresented = false
+                        }
+                    )
+                }
+
+                // 💲 Billable Toggle Button
+                Button(action: {
+                    isBillable.toggle()
+                    if timerManager.isRunning, let active = timerManager.activeEntry {
+                        active.isBillable = isBillable
+                        store.saveTimeEntry(active)
+                    }
+                }) {
+                    Text("$")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(isBillable ? AppColors.billable : Color.secondary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(isBillable ? AppColors.billable.opacity(0.12) : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                }
+                .buttonStyle(.plain)
+                .help(isBillable ? "Billable entry" : "Non-billable entry")
+
+                Spacer()
+
+                // Discard Button when running
+                if timerManager.isRunning {
                     Button(action: discardTimer) {
                         Image(systemName: "xmark")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(.secondary)
-                            .frame(width: 24, height: 24)
                     }
                     .buttonStyle(.plain)
-                    .help("Discard timer without saving")
-                } else {
-                    // Start Button
-                    Button(action: startTimer) {
-                        HStack(spacing: AppSpacing.xs) {
-                            Image(systemName: "play.fill")
-                                .font(.system(size: 12))
-                            Text("Start")
-                                .font(AppTypography.label)
-                        }
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, AppSpacing.md)
-                        .frame(height: 32)
-                    }
-                    .buttonStyle(.plain)
-                    .background(AppColors.brandAccent)
-                    .clipShape(RoundedRectangle(cornerRadius: AppSpacing.radiusButton))
-                    .help("Start timer (Return)")
+                    .help("Discard running timer")
                 }
             }
         }
-        .frame(height: 56)
-        .padding(.horizontal, AppSpacing.md)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
         .background(AppColors.cardBackground)
         .overlay(alignment: .bottom) {
             Divider()
+                .overlay(AppColors.border)
+        }
+        .sheet(isPresented: $isManualLogSheetPresented) {
+            EntryEditSheet(mode: .manualLog(initialProjectId: nil, initialTaskId: nil))
         }
         .onAppear {
             syncFromManager()
         }
-        .onChange(of: timerManager.activeEntry) { _, newEntry in
+        .onChange(of: timerManager.activeEntry) { oldEntry, newEntry in
             if let entry = newEntry {
                 descriptionText = entry.entryDescription
                 selectedProjectId = entry.projectId
                 selectedTaskId = entry.taskId
+                selectedTagIds = entry.tagIds
+                isBillable = entry.isBillable
             } else {
                 descriptionText = ""
                 selectedProjectId = timerManager.retainedProjectId
                 selectedTaskId = timerManager.retainedTaskId
+                selectedTagIds = timerManager.retainedTagIds
+                isBillable = timerManager.retainedIsBillable
+            }
+        }
+        .onChange(of: selectedProjectId) { _, newProjectId in
+            if let pId = newProjectId, let project = store.project(for: pId) {
+                if project.isBillableDefault {
+                    isBillable = true
+                }
+            }
+            if timerManager.isRunning, let active = timerManager.activeEntry {
+                active.projectId = newProjectId
+                store.saveTimeEntry(active)
+            }
+        }
+        .onChange(of: selectedTagIds) { _, newTagIds in
+            if timerManager.isRunning, let active = timerManager.activeEntry {
+                active.tagIds = newTagIds
+                store.saveTimeEntry(active)
             }
         }
     }
@@ -127,9 +272,13 @@ public struct ActiveTimerBar: View {
             descriptionText = entry.entryDescription
             selectedProjectId = entry.projectId
             selectedTaskId = entry.taskId
+            selectedTagIds = entry.tagIds
+            isBillable = entry.isBillable
         } else {
             selectedProjectId = timerManager.retainedProjectId
             selectedTaskId = timerManager.retainedTaskId
+            selectedTagIds = timerManager.retainedTagIds
+            isBillable = timerManager.retainedIsBillable
         }
     }
 
@@ -145,7 +294,9 @@ public struct ActiveTimerBar: View {
         timerManager.start(
             description: descriptionText,
             projectId: selectedProjectId,
-            taskId: selectedTaskId
+            taskId: selectedTaskId,
+            tagIds: selectedTagIds,
+            isBillable: isBillable
         )
     }
 
@@ -154,6 +305,8 @@ public struct ActiveTimerBar: View {
         descriptionText = ""
         selectedProjectId = timerManager.retainedProjectId
         selectedTaskId = timerManager.retainedTaskId
+        selectedTagIds = timerManager.retainedTagIds
+        isBillable = timerManager.retainedIsBillable
     }
 
     private func togglePause() {
@@ -169,5 +322,7 @@ public struct ActiveTimerBar: View {
         descriptionText = ""
         selectedProjectId = timerManager.retainedProjectId
         selectedTaskId = timerManager.retainedTaskId
+        selectedTagIds = timerManager.retainedTagIds
+        isBillable = timerManager.retainedIsBillable
     }
 }

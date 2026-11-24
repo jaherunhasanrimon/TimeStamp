@@ -2,13 +2,25 @@ import SwiftUI
 
 public struct MenuBarLabelView: View {
     @Environment(TimerManager.self) private var timerManager
+    @Environment(PomodoroManager.self) private var pomodoroManager
     @AppStorage("menuBarDisplayFormat") private var displayFormat: String = "icon_and_duration"
 
     public init() {}
 
     public var body: some View {
         Group {
-            if timerManager.isRunning {
+            if pomodoroManager.isRunning {
+                // Active Pomodoro Session in Menu Bar
+                HStack(spacing: AppSpacing.xs) {
+                    Text("🍅")
+                    if displayFormat != "icon_only" {
+                        Text(pomodoroManager.formattedRemainingTime)
+                            .font(Font.system(size: 13, design: .default).monospacedDigit())
+                            .foregroundStyle(pomodoroManager.sessionType == .work ? AppColors.togglMagenta : AppColors.success)
+                    }
+                }
+                .help("Pomodoro (\(pomodoroManager.sessionType.rawValue)): \(pomodoroManager.formattedRemainingTime) left")
+            } else if timerManager.isRunning {
                 HStack(spacing: AppSpacing.xs) {
                     if displayFormat != "duration_only" {
                         Image(systemName: "stopwatch")

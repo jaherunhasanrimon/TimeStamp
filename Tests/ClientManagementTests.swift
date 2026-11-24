@@ -166,6 +166,8 @@ struct ClientManagementTests {
                 guard let pId = entry.projectId else { return false }
                 return clientProjectIds.contains(pId)
             }
+        case .tag(let tId):
+            return store.timeEntries.filter { $0.tagIds.contains(tId) }
         }
     }
 }

@@ -2,11 +2,24 @@ import Foundation
 import Observation
 
 @Observable
-public final class Project: Identifiable, Codable {
+public final class Project: Identifiable, Codable, Equatable {
+    public static func == (lhs: Project, rhs: Project) -> Bool {
+        lhs.id == rhs.id &&
+        lhs.name == rhs.name &&
+        lhs.colorHex == rhs.colorHex &&
+        lhs.isArchived == rhs.isArchived &&
+        lhs.hourlyRate == rhs.hourlyRate &&
+        lhs.isBillableDefault == rhs.isBillableDefault &&
+        lhs.createdAt == rhs.createdAt &&
+        lhs.clientId == rhs.clientId
+    }
+
     public let id: UUID
     public var name: String
     public var colorHex: String
     public var isArchived: Bool
+    public var hourlyRate: Double?
+    public var isBillableDefault: Bool
     public var createdAt: Date
     public var clientId: UUID?
 
@@ -15,6 +28,8 @@ public final class Project: Identifiable, Codable {
         name: String = "",
         colorHex: String = "#5C3BFE",
         isArchived: Bool = false,
+        hourlyRate: Double? = nil,
+        isBillableDefault: Bool = false,
         createdAt: Date = Date(),
         clientId: UUID? = nil
     ) {
@@ -22,6 +37,8 @@ public final class Project: Identifiable, Codable {
         self.name = name
         self.colorHex = colorHex
         self.isArchived = isArchived
+        self.hourlyRate = hourlyRate
+        self.isBillableDefault = isBillableDefault
         self.createdAt = createdAt
         self.clientId = clientId
     }
@@ -31,6 +48,8 @@ public final class Project: Identifiable, Codable {
         case name
         case colorHex
         case isArchived
+        case hourlyRate
+        case isBillableDefault
         case createdAt
         case clientId
     }
@@ -41,7 +60,9 @@ public final class Project: Identifiable, Codable {
         self.name = try container.decode(String.self, forKey: .name)
         self.colorHex = try container.decode(String.self, forKey: .colorHex)
         self.isArchived = try container.decode(Bool.self, forKey: .isArchived)
-        self.createdAt = try container.decode(Date.self, forKey: .createdAt)
+        self.hourlyRate = try container.decodeIfPresent(Double.self, forKey: .hourlyRate)
+        self.isBillableDefault = try container.decodeIfPresent(Bool.self, forKey: .isBillableDefault) ?? false
+        self.createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
         self.clientId = try container.decodeIfPresent(UUID.self, forKey: .clientId)
     }
 
@@ -51,6 +72,8 @@ public final class Project: Identifiable, Codable {
         try container.encode(name, forKey: .name)
         try container.encode(colorHex, forKey: .colorHex)
         try container.encode(isArchived, forKey: .isArchived)
+        try container.encode(hourlyRate, forKey: .hourlyRate)
+        try container.encode(isBillableDefault, forKey: .isBillableDefault)
         try container.encode(createdAt, forKey: .createdAt)
         try container.encode(clientId, forKey: .clientId)
     }

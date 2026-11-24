@@ -22,20 +22,12 @@ public struct DashboardView: View {
                 }
 
                 if store.timeEntries.isEmpty {
-                    VStack(spacing: AppSpacing.md) {
-                        Image(systemName: "chart.bar.xaxis")
-                            .font(.system(size: 48, weight: .light))
-                            .foregroundStyle(AppColors.brandAccent)
-
-                        Text("No Activity Tracked")
-                            .font(AppTypography.heading)
-
-                        Text("No activity tracked today. Start a timer or log past time to view productivity metrics.")
-                            .font(AppTypography.body)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                            .frame(maxWidth: 400)
-                    }
+                    TogglEmptyStateView(
+                        style: .binoculars(
+                            title: "No Activity Tracked",
+                            subtitle: "No activity tracked today. Start a timer or log past time to view productivity metrics."
+                        )
+                    )
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, AppSpacing.xl * 2)
                 } else {

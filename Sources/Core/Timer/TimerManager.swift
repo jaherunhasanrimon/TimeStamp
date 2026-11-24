@@ -18,6 +18,8 @@ public final class TimerManager {
     // Retained values for chained work on the same project (D-06)
     public var retainedProjectId: UUID?
     public var retainedTaskId: UUID?
+    public var retainedTagIds: [UUID] = []
+    public var retainedIsBillable: Bool = false
 
     private let store: PersistenceStore
     private var sleepMonitor: SleepWakeMonitor?
@@ -47,7 +49,8 @@ public final class TimerManager {
         description: String = "",
         projectId: UUID? = nil,
         taskId: UUID? = nil,
-        tagIds: [UUID] = []
+        tagIds: [UUID] = [],
+        isBillable: Bool = false
     ) {
         // If a timer is already running, stop it first to prevent collisions (D-10)
         if activeEntry != nil {
@@ -62,13 +65,16 @@ public final class TimerManager {
             isPaused: false,
             projectId: projectId,
             taskId: taskId,
-            tagIds: tagIds
+            tagIds: tagIds,
+            isBillable: isBillable
         )
 
         self.activeEntry = entry
         self.isPaused = false
         self.retainedProjectId = projectId
         self.retainedTaskId = taskId
+        self.retainedTagIds = tagIds
+        self.retainedIsBillable = isBillable
 
         store.saveTimeEntry(entry)
         updateTick()
@@ -126,6 +132,8 @@ public final class TimerManager {
         // Retain project & task for chaining (D-06)
         self.retainedProjectId = entry.projectId
         self.retainedTaskId = entry.taskId
+        self.retainedTagIds = entry.tagIds
+        self.retainedIsBillable = entry.isBillable
 
         store.saveTimeEntry(entry)
 
@@ -157,7 +165,8 @@ public final class TimerManager {
             description: entry.entryDescription,
             projectId: entry.projectId,
             taskId: entry.taskId,
-            tagIds: entry.tagIds
+            tagIds: entry.tagIds,
+            isBillable: entry.isBillable
         )
     }
 
@@ -170,6 +179,8 @@ public final class TimerManager {
             self.isPaused = existingActive.isPaused
             self.retainedProjectId = existingActive.projectId
             self.retainedTaskId = existingActive.taskId
+            self.retainedTagIds = existingActive.tagIds
+            self.retainedIsBillable = existingActive.isBillable
 
             updateTick()
             if !existingActive.isPaused {

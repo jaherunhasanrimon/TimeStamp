@@ -35,42 +35,36 @@ public struct ReportsDonutChartView: View {
     public var body: some View {
         ZStack {
             if items.isEmpty {
-                Circle()
-                    .stroke(Color.secondary.opacity(0.15), lineWidth: 16)
-                    .frame(width: 180, height: 180)
-
-                VStack(spacing: 2) {
-                    Text("0m")
-                        .font(AppTypography.displayTicker)
-                        .foregroundStyle(.secondary)
-                    Text("No tracked time")
-                        .font(AppTypography.caption)
-                        .foregroundStyle(.secondary)
-                }
+                TogglEmptyStateView(
+                    style: .binoculars(
+                        title: "Nothing to see here...",
+                        subtitle: "We couldn't find any time entries for this period."
+                    )
+                )
+                .frame(height: 220)
             } else {
                 Chart(items) { item in
                     SectorMark(
                         angle: .value("Duration", item.duration),
-                        innerRadius: .ratio(0.65),
-                        angularInset: 1.5
+                        innerRadius: .ratio(0.68),
+                        angularInset: 2.0
                     )
                     .foregroundStyle(Color(hex: item.colorHex))
                 }
                 .frame(width: 220, height: 220)
 
                 VStack(spacing: 2) {
-                    Text(DateHelper.formatHumanDuration(totalDuration))
-                        .font(AppTypography.displayTicker)
+                    Text(TimeCalculator.formatDuration(totalDuration))
+                        .font(.system(size: 18, weight: .bold, design: .monospaced))
+                        .foregroundStyle(Color.primary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
 
-                    Text("Total Time")
-                        .font(AppTypography.caption)
+                    Text("PROJECT")
+                        .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(.secondary)
                 }
-                .frame(maxWidth: 130)
             }
         }
-        .frame(width: 220, height: 220)
     }
 }

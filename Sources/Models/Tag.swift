@@ -2,7 +2,14 @@ import Foundation
 import Observation
 
 @Observable
-public final class Tag: Identifiable, Codable {
+public final class Tag: Identifiable, Codable, Equatable {
+    public static func == (lhs: Tag, rhs: Tag) -> Bool {
+        lhs.id == rhs.id &&
+        lhs.name == rhs.name &&
+        lhs.colorHex == rhs.colorHex &&
+        lhs.createdAt == rhs.createdAt
+    }
+
     public let id: UUID
     public var name: String
     public var colorHex: String
@@ -11,7 +18,7 @@ public final class Tag: Identifiable, Codable {
     public init(
         id: UUID = UUID(),
         name: String = "",
-        colorHex: String = "#7B61FF",
+        colorHex: String = "#E54583",
         createdAt: Date = Date()
     ) {
         self.id = id
@@ -31,8 +38,8 @@ public final class Tag: Identifiable, Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.id = try container.decode(UUID.self, forKey: .id)
         self.name = try container.decode(String.self, forKey: .name)
-        self.colorHex = try container.decode(String.self, forKey: .colorHex)
-        self.createdAt = try container.decode(Date.self, forKey: .createdAt)
+        self.colorHex = try container.decodeIfPresent(String.self, forKey: .colorHex) ?? "#E54583"
+        self.createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
     }
 
     public func encode(to encoder: Encoder) throws {
