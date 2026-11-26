@@ -114,6 +114,17 @@ public struct ClientRowView: View {
 
                 // Metrics
                 HStack(spacing: AppSpacing.sm) {
+                    if let rate = client.hourlyRate, rate > 0 {
+                        let formattedRate = rate.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(rate))" : String(format: "%.2f", rate)
+                        Text("\(client.currency)\(formattedRate)/hr")
+                            .font(AppTypography.caption)
+                            .foregroundStyle(AppColors.billable)
+                            .padding(.horizontal, AppSpacing.xs)
+                            .padding(.vertical, 2)
+                            .background(AppColors.billable.opacity(0.10))
+                            .clipShape(RoundedRectangle(cornerRadius: AppSpacing.radiusSmall))
+                    }
+
                     Text("\(assignedProjects.count) \(assignedProjects.count == 1 ? "project" : "projects")")
                         .font(AppTypography.caption)
                         .foregroundStyle(.secondary)

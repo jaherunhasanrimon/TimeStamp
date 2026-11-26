@@ -7,6 +7,7 @@ public enum SidebarDestination: String, CaseIterable, Identifiable, Hashable {
     case reports = "Reports"
     case projects = "Projects"
     case clients = "Clients"
+    case tags = "Tags"
     case settings = "Settings"
 
     public var id: String { rawValue }
@@ -25,6 +26,8 @@ public enum SidebarDestination: String, CaseIterable, Identifiable, Hashable {
             return "folder"
         case .clients:
             return "person.2"
+        case .tags:
+            return "tag"
         case .settings:
             return "gearshape"
         }

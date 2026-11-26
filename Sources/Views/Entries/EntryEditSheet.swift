@@ -26,6 +26,7 @@ public struct EntryEditSheet: View {
     @State private var selectedTaskId: UUID?
     @State private var selectedTagIds: [UUID]
     @State private var isBillable: Bool
+    @State private var isFavorite: Bool
     @State private var isTagPickerPresented: Bool = false
     @State private var entryDate: Date
     @State private var startTime: Date
@@ -43,6 +44,7 @@ public struct EntryEditSheet: View {
             _selectedTaskId = State(initialValue: entry.taskId)
             _selectedTagIds = State(initialValue: entry.tagIds)
             _isBillable = State(initialValue: entry.isBillable)
+            _isFavorite = State(initialValue: entry.isFavorite)
             _entryDate = State(initialValue: entry.startDate)
             _startTime = State(initialValue: entry.startDate)
             let effectiveEnd = entry.endDate ?? entry.startDate.addingTimeInterval(max(60, entry.effectiveDuration))
@@ -57,6 +59,7 @@ public struct EntryEditSheet: View {
             _selectedTaskId = State(initialValue: initialTaskId)
             _selectedTagIds = State(initialValue: [])
             _isBillable = State(initialValue: false)
+            _isFavorite = State(initialValue: false)
             _entryDate = State(initialValue: now)
             _startTime = State(initialValue: hourAgo)
             _endTime = State(initialValue: now)
@@ -66,6 +69,11 @@ public struct EntryEditSheet: View {
 
     private var isEdit: Bool {
         if case .edit = mode { return true }
+        return false
+    }
+
+    private var isEditingActiveTimer: Bool {
+        if case .edit(let entry) = mode { return entry.endDate == nil }
         return false
     }
 
@@ -124,14 +132,25 @@ public struct EntryEditSheet: View {
                     }
                 }
 
-                // Billable Toggle & Tags (Priority 3)
-                HStack(spacing: AppSpacing.lg) {
+                // Billable, Favorite & Tags
+                HStack(spacing: AppSpacing.md) {
                     Toggle(isOn: $isBillable) {
                         HStack(spacing: 4) {
                             Text("$")
                                 .font(.system(size: 13, weight: .bold))
                                 .foregroundStyle(isBillable ? AppColors.billable : Color.secondary)
                             Text("Billable")
+                                .font(AppTypography.label)
+                        }
+                    }
+                    .toggleStyle(.checkbox)
+
+                    Toggle(isOn: $isFavorite) {
+                        HStack(spacing: 4) {
+                            Image(systemName: isFavorite ? "star.fill" : "star")
+                                .font(.system(size: 11))
+                                .foregroundStyle(isFavorite ? AppColors.goalGold : Color.secondary)
+                            Text("Favorite")
                                 .font(AppTypography.label)
                         }
                     }
@@ -214,46 +233,58 @@ public struct EntryEditSheet: View {
                             .labelsHidden()
                     }
 
-                    GridRow {
-                        Text("End Time")
-                            .font(AppTypography.label)
-                            .foregroundStyle(.secondary)
+                    if !isEditingActiveTimer {
+                        GridRow {
+                            Text("End Time")
+                                .font(AppTypography.label)
+                                .foregroundStyle(.secondary)
 
-                        DatePicker("", selection: $endTime, displayedComponents: [.hourAndMinute])
-                            .labelsHidden()
-                    }
+                            DatePicker("", selection: $endTime, displayedComponents: [.hourAndMinute])
+                                .labelsHidden()
+                        }
 
-                    GridRow {
-                        Text("Duration")
-                            .font(AppTypography.label)
-                            .foregroundStyle(.secondary)
+                        GridRow {
+                            Text("Duration")
+                                .font(AppTypography.label)
+                                .foregroundStyle(.secondary)
 
-                        HStack(spacing: AppSpacing.sm) {
-                            Text(TimeCalculator.formatDuration(durationSeconds))
-                                .font(AppTypography.subTicker)
-                                .padding(.horizontal, AppSpacing.sm)
-                                .padding(.vertical, 4)
-                                .background(AppColors.secondaryCardBackground)
-                                .clipShape(RoundedRectangle(cornerRadius: AppSpacing.radiusSmall))
+                            HStack(spacing: AppSpacing.sm) {
+                                Text(TimeCalculator.formatDuration(durationSeconds))
+                                    .font(AppTypography.subTicker)
+                                    .padding(.horizontal, AppSpacing.sm)
+                                    .padding(.vertical, 4)
+                                    .background(AppColors.secondaryCardBackground)
+                                    .clipShape(RoundedRectangle(cornerRadius: AppSpacing.radiusSmall))
 
-                            Button("-15m") {
-                                adjustDuration(by: -15 * 60)
+                                Button("-15m") {
+                                    adjustDuration(by: -15 * 60)
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .disabled(durationSeconds <= 15 * 60)
+
+                                Button("+15m") {
+                                    adjustDuration(by: 15 * 60)
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+
+                                Button("+1h") {
+                                    adjustDuration(by: 60 * 60)
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
                             }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                            .disabled(durationSeconds <= 15 * 60)
+                        }
+                    } else {
+                        GridRow {
+                            Text("Status")
+                                .font(AppTypography.label)
+                                .foregroundStyle(.secondary)
 
-                            Button("+15m") {
-                                adjustDuration(by: 15 * 60)
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-
-                            Button("+1h") {
-                                adjustDuration(by: 60 * 60)
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
+                            Text("Currently running — start time changes adjust elapsed live")
+                                .font(AppTypography.caption)
+                                .foregroundStyle(AppColors.togglMagenta)
                         }
                     }
                 }
@@ -324,13 +355,7 @@ public struct EntryEditSheet: View {
     }
 
     private func saveEntry() {
-        guard endTime > startTime else {
-            validationError = "End time must be after start time."
-            return
-        }
-
         let trimmedDesc = descriptionText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let duration = max(0, endTime.timeIntervalSince(startTime))
 
         switch mode {
         case .edit(let entry):
@@ -339,14 +364,35 @@ public struct EntryEditSheet: View {
             entry.taskId = selectedTaskId
             entry.tagIds = selectedTagIds
             entry.isBillable = isBillable
-            entry.startDate = startTime
-            entry.endDate = endTime
-            entry.accumulatedDuration = duration
-            entry.isPaused = false
+            entry.isFavorite = isFavorite
             entry.updatedAt = Date()
-            store.saveTimeEntry(entry)
+
+            if entry.endDate == nil {
+                // Preserve running/paused state cleanly without stopping
+                entry.startDate = min(startTime, Date())
+                store.saveTimeEntry(entry)
+                if timerManager.activeEntry?.id == entry.id {
+                    timerManager.updateTick()
+                }
+            } else {
+                guard endTime > startTime else {
+                    validationError = "End time must be after start time."
+                    return
+                }
+                let duration = max(0, endTime.timeIntervalSince(startTime))
+                entry.startDate = startTime
+                entry.endDate = endTime
+                entry.accumulatedDuration = duration
+                entry.isPaused = false
+                store.saveTimeEntry(entry)
+            }
 
         case .manualLog:
+            guard endTime > startTime else {
+                validationError = "End time must be after start time."
+                return
+            }
+            let duration = max(0, endTime.timeIntervalSince(startTime))
             let newEntry = TimeEntry(
                 entryDescription: trimmedDesc,
                 startDate: startTime,
@@ -358,7 +404,8 @@ public struct EntryEditSheet: View {
                 projectId: selectedProjectId,
                 taskId: selectedTaskId,
                 tagIds: selectedTagIds,
-                isBillable: isBillable
+                isBillable: isBillable,
+                isFavorite: isFavorite
             )
             store.saveTimeEntry(newEntry)
 

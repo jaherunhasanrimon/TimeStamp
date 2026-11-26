@@ -12,6 +12,9 @@ public struct ProjectPickerPopover: View {
 
     @State private var searchText: String = ""
     @State private var isCreatingProject: Bool = false
+    @State private var expandedProjectIds: Set<UUID> = []
+    @State private var highlightedIndex: Int = -1
+    @FocusState private var isSearchFocused: Bool
 
     public init(
         selectedProjectId: Binding<UUID?>,
@@ -24,17 +27,22 @@ public struct ProjectPickerPopover: View {
     }
 
     private var filteredProjects: [Project] {
-        if searchText.trimmingCharacters(in: .whitespaces).isEmpty {
-            return store.projects
+        let activeProjects = store.projects.filter { !$0.isArchived }
+        let query = searchText.trimmingCharacters(in: .whitespaces).lowercased()
+        if query.isEmpty {
+            return activeProjects
         }
-        let query = searchText.lowercased()
-        return store.projects.filter { project in
+        return activeProjects.filter { project in
             let matchesProject = project.name.lowercased().contains(query)
             let clientName = project.clientId.flatMap { store.client(for: $0) }?.name.lowercased() ?? ""
             let matchesClient = clientName.contains(query)
-            let matchesTask = store.tasks.contains { $0.projectId == project.id && $0.name.lowercased().contains(query) }
+            let matchesTask = store.tasks.contains { $0.projectId == project.id && !$0.isCompleted && $0.name.lowercased().contains(query) }
             return matchesProject || matchesClient || matchesTask
         }
+    }
+
+    private var orderedVisibleProjects: [Project] {
+        projectsWithoutClient + clientsWithProjects.flatMap(\.1)
     }
 
     private var projectsWithoutClient: [Project] {
@@ -59,6 +67,46 @@ public struct ProjectPickerPopover: View {
                 TextField("Search by project, task or client", text: $searchText)
                     .textFieldStyle(.plain)
                     .font(.system(size: 12))
+                    .focused($isSearchFocused)
+                    .onKeyPress(.downArrow) {
+                        let count = orderedVisibleProjects.count
+                        if count > 0 {
+                            highlightedIndex = min(count - 1, max(0, highlightedIndex + 1))
+                        }
+                        return .handled
+                    }
+                    .onKeyPress(.upArrow) {
+                        if highlightedIndex > 0 {
+                            highlightedIndex -= 1
+                        }
+                        return .handled
+                    }
+                    .onKeyPress(.return) {
+                        let visible = orderedVisibleProjects
+                        if highlightedIndex >= 0 && highlightedIndex < visible.count {
+                            let proj = visible[highlightedIndex]
+                            selectedProjectId = proj.id
+                            selectedTaskId = nil
+                            onDismiss()
+                            return .handled
+                        } else if visible.count == 1, let only = visible.first {
+                            selectedProjectId = only.id
+                            selectedTaskId = nil
+                            onDismiss()
+                            return .handled
+                        }
+                        return .ignored
+                    }
+                    .onKeyPress(.escape) {
+                        onDismiss()
+                        return .handled
+                    }
+            }
+            .onAppear {
+                isSearchFocused = true
+            }
+            .onChange(of: searchText) { _, _ in
+                highlightedIndex = orderedVisibleProjects.isEmpty ? -1 : 0
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
@@ -160,7 +208,7 @@ public struct ProjectPickerPopover: View {
 
                     Text("Create project")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(AppColors.togglMagenta)
+                        .foregroundStyle(Color.primary)
 
                     Spacer()
                 }
@@ -181,34 +229,107 @@ public struct ProjectPickerPopover: View {
     @ViewBuilder
     private func projectRow(_ project: Project) -> some View {
         let isSelected = selectedProjectId == project.id
-        Button(action: {
-            selectedProjectId = project.id
-            selectedTaskId = nil
-            onDismiss()
-        }) {
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(Color(hex: project.colorHex))
-                    .frame(width: 8, height: 8)
+        let activeTasks = store.tasks.filter { $0.projectId == project.id && !$0.isCompleted }
+        let query = searchText.trimmingCharacters(in: .whitespaces).lowercased()
+        let matchingTasks: [Task] = query.isEmpty ? activeTasks : activeTasks.filter { $0.name.lowercased().contains(query) }
+        let hasMatchingTaskSearch = !query.isEmpty && !matchingTasks.isEmpty
+        let isTasksExpanded = expandedProjectIds.contains(project.id) || hasMatchingTaskSearch
+        let isKeyboardHighlighted = highlightedIndex >= 0 &&
+            highlightedIndex < orderedVisibleProjects.count &&
+            orderedVisibleProjects[highlightedIndex].id == project.id
 
-                Text(project.name)
-                    .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
-                    .foregroundStyle(Color.primary)
-                    .lineLimit(1)
-
-                Spacer()
-
-                if isSelected {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(AppColors.togglMagenta)
+        VStack(alignment: .leading, spacing: 1) {
+            HStack(spacing: 6) {
+                if !activeTasks.isEmpty {
+                    Button(action: {
+                        if expandedProjectIds.contains(project.id) {
+                            expandedProjectIds.remove(project.id)
+                        } else {
+                            expandedProjectIds.insert(project.id)
+                        }
+                    }) {
+                        Image(systemName: isTasksExpanded ? "chevron.down" : "chevron.right")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 14, height: 14)
+                    }
+                    .buttonStyle(.plain)
                 }
+
+                Button(action: {
+                    selectedProjectId = project.id
+                    selectedTaskId = nil
+                    onDismiss()
+                }) {
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(Color(hex: project.colorHex))
+                            .frame(width: 8, height: 8)
+
+                        Text(project.name)
+                            .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
+                            .foregroundStyle(Color.primary)
+                            .lineLimit(1)
+
+                        Spacer()
+
+                        if !activeTasks.isEmpty {
+                            Text("\(activeTasks.count) \(activeTasks.count == 1 ? "task" : "tasks")")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.secondary)
+                        }
+
+                        if isSelected && selectedTaskId == nil {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(AppColors.togglMagenta)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
-            .background(isSelected ? AppColors.secondaryCardBackground : Color.clear)
+            .background(
+                isKeyboardHighlighted ? AppColors.togglMagenta.opacity(0.18) :
+                    (isSelected ? AppColors.secondaryCardBackground : Color.clear)
+            )
             .clipShape(RoundedRectangle(cornerRadius: 4))
+
+            if isTasksExpanded {
+                let tasksToRender = hasMatchingTaskSearch ? matchingTasks : activeTasks
+                ForEach(tasksToRender) { task in
+                    let isTaskSelected = selectedProjectId == project.id && selectedTaskId == task.id
+                    Button(action: {
+                        selectedProjectId = project.id
+                        selectedTaskId = task.id
+                        onDismiss()
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "checklist")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.secondary)
+                            Text(task.name)
+                                .font(.system(size: 11, weight: isTaskSelected ? .semibold : .regular))
+                                .foregroundStyle(isTaskSelected ? AppColors.togglMagenta : Color.primary)
+                                .lineLimit(1)
+                            Spacer()
+                            if isTaskSelected {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(AppColors.togglMagenta)
+                            }
+                        }
+                        .padding(.leading, 30)
+                        .padding(.trailing, 12)
+                        .padding(.vertical, 4)
+                        .background(isTaskSelected ? AppColors.secondaryCardBackground : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
         }
-        .buttonStyle(.plain)
     }
 }

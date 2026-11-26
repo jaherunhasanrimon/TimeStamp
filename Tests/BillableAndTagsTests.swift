@@ -242,6 +242,10 @@ struct BillableAndTagsTests {
                 return store.timeEntries.filter { $0.projectId.map { cProjectIds.contains($0) } ?? false }
             case .tag(let id):
                 return store.timeEntries.filter { $0.tagIds.contains(id) }
+            case .billableOnly:
+                return store.timeEntries.filter { $0.isBillable }
+            case .nonBillableOnly:
+                return store.timeEntries.filter { !$0.isBillable }
             }
         }
 
@@ -285,9 +289,9 @@ struct BillableAndTagsTests {
         #expect(timer.activeEntry?.isBillable == true)
         #expect(timer.activeEntry?.tagIds == [tag.id])
 
-        // Verify goal progress tracks the active session
-        let progress = store.progress(for: goal, activeDuration: 600)
-        #expect(progress.completedDuration == 600)
+        // Verify goal progress tracks the active session (allowing sub-second elapsed from prior stopped Pomodoro entry)
+        let progress = store.progress(for: goal, activeEntry: timer.activeEntry, activeDuration: 600)
+        #expect(abs(progress.completedDuration - 600) < 1.0)
         #expect(progress.isCompleted == false)
 
         _ = timer.stop()

@@ -1,188 +1,414 @@
 import SwiftUI
 
-/// Authentic Toggl Track-style Pomodoro Companion Popover.
-/// Displays active phase, large countdown digits, interval indicators,
-/// and Start / Pause / Resume / Skip / Reset controls.
+/// Authentic Toggl Track Pomodoro UI matching `toggl_macos_pomodoro_window.jpg`.
+/// Used both inside the toolbar Tomato Popover and as a standalone floating Pomodoro Window.
 public struct PomodoroPopoverView: View {
-    @Environment(PomodoroManager.self) private var pomodoroManager
-    @Environment(TimerManager.self) private var timerManager
+    @Environment(PomodoroManager.self) private var pomodoro
+    @Environment(PersistenceStore.self) private var store
+    @Environment(\.openWindow) private var openWindow
 
     public let onDismiss: () -> Void
+    public let isStandaloneWindow: Bool
 
-    public init(onDismiss: @escaping () -> Void = {}) {
+    @State private var isDetailsPresented: Bool = false
+    @State private var isSettingsExpanded: Bool = false
+    @State private var isProjectPickerPresented: Bool = false
+    @State private var isTagPickerPresented: Bool = false
+
+    @State private var draftDescription: String = ""
+    @State private var draftProjectId: UUID? = nil
+    @State private var draftTaskId: UUID? = nil
+    @State private var draftTagIds: [UUID] = []
+    @State private var draftIsBillable: Bool = false
+
+    public init(isStandaloneWindow: Bool = false, onDismiss: @escaping () -> Void = {}) {
+        self.isStandaloneWindow = isStandaloneWindow
         self.onDismiss = onDismiss
     }
 
+    private var accentColor: Color {
+        switch pomodoro.sessionType {
+        case .work:
+            return AppColors.togglMagenta
+        case .shortBreak, .longBreak:
+            return AppColors.billable
+        }
+    }
+
+    private var phaseSubtitle: String {
+        if !pomodoro.isRunning && !pomodoro.isPaused {
+            return "Ready?"
+        }
+        if pomodoro.isPaused {
+            return "Paused"
+        }
+        switch pomodoro.sessionType {
+        case .work:
+            return "Focus • Session \(pomodoro.completedWorkSessions + 1)/\(pomodoro.targetIntervalCount)"
+        case .shortBreak:
+            return "Short breather"
+        case .longBreak:
+            return "Long recharge"
+        }
+    }
+
+    private var focusSummaryLabel: String {
+        let trimmed = pomodoro.focusDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+            return trimmed
+        }
+        if let pid = pomodoro.focusProjectId, let proj = store.project(for: pid) {
+            return proj.name
+        }
+        return "I'm focusing on..."
+    }
+
     public var body: some View {
-        VStack(spacing: 14) {
-            // Header: Title & Cycle indicator (e.g. 🍅 2/4)
-            HStack {
-                HStack(spacing: 6) {
-                    Text("🍅")
-                        .font(.system(size: 16))
+        VStack(spacing: 16) {
+            // Optional Pop-out Window header when opened in popover
+            if !isStandaloneWindow {
+                HStack {
                     Text("Pomodoro")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(Color.primary)
-                }
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.primary)
 
-                Spacer()
+                    Spacer()
 
-                // Completed interval badges
-                HStack(spacing: 4) {
-                    ForEach(0..<pomodoroManager.targetIntervalCount, id: \.self) { index in
-                        Circle()
-                            .fill(index < (pomodoroManager.completedWorkSessions % pomodoroManager.targetIntervalCount)
-                                  ? AppColors.togglMagenta
-                                  : AppColors.border)
-                            .frame(width: 8, height: 8)
-                    }
-
-                    Text("\(pomodoroManager.completedWorkSessions % pomodoroManager.targetIntervalCount)/\(pomodoroManager.targetIntervalCount)")
-                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    Button {
+                        openWindow(id: "pomodoro")
+                        onDismiss()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "macwindow.badge.plus")
+                                .font(.system(size: 11))
+                            Text("Window")
+                                .font(.system(size: 10, weight: .medium))
+                        }
                         .foregroundStyle(.secondary)
-                        .padding(.leading, 4)
-                }
-            }
-
-            Divider()
-                .overlay(AppColors.border)
-
-            // Center Countdown & Phase Ring
-            VStack(spacing: 6) {
-                Text(pomodoroManager.sessionType.rawValue.uppercased())
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(pomodoroManager.sessionType == .work ? AppColors.togglMagenta : AppColors.success)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(
-                        (pomodoroManager.sessionType == .work ? AppColors.togglMagenta : AppColors.success)
-                            .opacity(0.12)
-                    )
-                    .clipShape(Capsule())
-
-                ZStack {
-                    // Circular progress background
-                    Circle()
-                        .stroke(AppColors.insetBackground, lineWidth: 8)
-                        .frame(width: 140, height: 140)
-
-                    // Progress ring
-                    Circle()
-                        .trim(from: 0.0, to: CGFloat(pomodoroManager.progressPercentage))
-                        .stroke(
-                            pomodoroManager.sessionType == .work ? AppColors.togglMagenta : AppColors.success,
-                            style: StrokeStyle(lineWidth: 8, lineCap: .round)
-                        )
-                        .rotationEffect(.degrees(-90))
-                        .frame(width: 140, height: 140)
-                        .animation(.linear(duration: 0.5), value: pomodoroManager.progressPercentage)
-
-                    VStack(spacing: 2) {
-                        Text(pomodoroManager.formattedRemainingTime)
-                            .font(.system(size: 28, weight: .bold, design: .monospaced))
-                            .foregroundStyle(Color.primary)
-
-                        if pomodoroManager.isPaused {
-                            Text("PAUSED")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundStyle(.secondary)
-                        } else if pomodoroManager.isRunning {
-                            Text(pomodoroManager.sessionType == .work ? "Tracking" : "Resting")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundStyle(.secondary)
-                        } else {
-                            Text("Ready")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundStyle(.secondary)
-                        }
                     }
+                    .buttonStyle(.plain)
+                    .help("Open floating Pomodoro window")
                 }
-                .padding(.vertical, 8)
             }
 
-            Divider()
-                .overlay(AppColors.border)
+            // "I'm focusing on..." Intent Pill -> DETAILS Popover
+            Button {
+                draftDescription = pomodoro.focusDescription
+                draftProjectId = pomodoro.focusProjectId
+                draftTaskId = pomodoro.focusTaskId
+                draftTagIds = pomodoro.focusTagIds
+                draftIsBillable = pomodoro.focusIsBillable
+                isDetailsPresented.toggle()
+            } label: {
+                HStack(spacing: 6) {
+                    if let pid = pomodoro.focusProjectId, let proj = store.project(for: pid) {
+                        Circle()
+                            .fill(Color(hex: proj.colorHex))
+                            .frame(width: 7, height: 7)
+                    }
+                    Text(focusSummaryLabel)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(pomodoro.focusDescription.isEmpty && pomodoro.focusProjectId == nil ? .secondary : .primary)
+                        .lineLimit(1)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity)
+                .background(AppColors.insetBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(AppColors.border, lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .popover(isPresented: $isDetailsPresented, arrowEdge: .leading) {
+                detailsPopover
+            }
 
-            // Primary Control Buttons (Start / Pause / Skip / Reset)
-            HStack(spacing: 12) {
-                if !pomodoroManager.isRunning {
-                    Button(action: {
-                        pomodoroManager.start()
-                    }) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "play.fill")
-                                .font(.system(size: 12, weight: .bold))
-                            Text(pomodoroManager.sessionType == .work ? "Start Focus" : "Start Break")
-                                .font(.system(size: 13, weight: .semibold))
-                        }
-                        .foregroundStyle(Color.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                        .background(pomodoroManager.sessionType == .work ? AppColors.togglMagenta : AppColors.success)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
+            // 60-Tick Toggl Pomodoro Circular Dial
+            ZStack {
+                Circle()
+                    .fill(AppColors.insetBackground.opacity(0.65))
+                    .frame(width: 190, height: 190)
+
+                Circle()
+                    .stroke(accentColor.opacity(0.20), lineWidth: 10)
+                    .frame(width: 190, height: 190)
+
+                Circle()
+                    .trim(from: 0, to: CGFloat(max(0.0, min(1.0, pomodoro.progressPercentage))))
+                    .stroke(
+                        accentColor,
+                        style: StrokeStyle(lineWidth: 10, lineCap: .butt)
+                    )
+                    .frame(width: 190, height: 190)
+                    .rotationEffect(.degrees(-90))
+                    .animation(.linear(duration: 0.2), value: pomodoro.progressPercentage)
+
+                // 60 Radial Tick Marks inside Ring
+                ForEach(0..<60, id: \.self) { tick in
+                    let isMajor = tick % 5 == 0
+                    Rectangle()
+                        .fill(Color.primary.opacity(isMajor ? 0.55 : 0.22))
+                        .frame(width: isMajor ? 1.5 : 1.0, height: isMajor ? 8 : 5)
+                        .offset(y: -78)
+                        .rotationEffect(.degrees(Double(tick) * 6.0))
+                }
+
+                // Center Dial Stack
+                VStack(spacing: 4) {
+                    Text(pomodoro.sessionType.rawValue)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.secondary)
+
+                    Text(pomodoro.formattedDisplayTime)
+                        .font(.system(size: 30, weight: .bold, design: .monospaced))
+                        .foregroundStyle(Color.primary)
+
+                    Text(phaseSubtitle)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(pomodoro.isRunning ? accentColor : .secondary)
+                }
+            }
+            .frame(width: 204, height: 204)
+
+            // Primary Action CTA + Secondary Controls
+            VStack(spacing: 8) {
+                if !pomodoro.isRunning && !pomodoro.isPaused {
+                    Button {
+                        pomodoro.start(
+                            description: pomodoro.focusDescription,
+                            projectId: pomodoro.focusProjectId,
+                            taskId: pomodoro.focusTaskId,
+                            tagIds: pomodoro.focusTagIds,
+                            isBillable: pomodoro.focusIsBillable
+                        )
+                    } label: {
+                        Text("Start session")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 9)
+                            .background(accentColor)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
                     .buttonStyle(.plain)
                 } else {
-                    // Pause / Resume Button
-                    Button(action: {
-                        if pomodoroManager.isPaused {
-                            pomodoroManager.resume()
-                        } else {
-                            pomodoroManager.pause()
+                    HStack(spacing: 8) {
+                        Button {
+                            if pomodoro.isRunning {
+                                pomodoro.pause()
+                            } else {
+                                pomodoro.resume()
+                            }
+                        } label: {
+                            Label(pomodoro.isRunning ? "Pause" : "Resume",
+                                  systemImage: pomodoro.isRunning ? "pause.fill" : "play.fill")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 8)
+                                .background(accentColor)
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
                         }
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: pomodoroManager.isPaused ? "play.fill" : "pause.fill")
-                                .font(.system(size: 11, weight: .bold))
-                            Text(pomodoroManager.isPaused ? "Resume" : "Pause")
-                                .font(.system(size: 12, weight: .semibold))
-                        }
-                        .foregroundStyle(Color.primary)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 7)
-                        .background(AppColors.secondaryCardBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                    }
-                    .buttonStyle(.plain)
+                        .buttonStyle(.plain)
 
-                    // Skip Button
-                    Button(action: {
-                        pomodoroManager.skip()
-                    }) {
-                        HStack(spacing: 4) {
+                        Button {
+                            pomodoro.skip()
+                        } label: {
                             Image(systemName: "forward.end.fill")
-                                .font(.system(size: 10, weight: .bold))
-                            Text("Skip")
-                                .font(.system(size: 12, weight: .medium))
+                                .font(.system(size: 12))
+                                .frame(width: 34, height: 34)
+                                .background(AppColors.insetBackground)
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
                         }
-                        .foregroundStyle(Color.primary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(AppColors.secondaryCardBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                    }
-                    .buttonStyle(.plain)
-                    .help("Skip to next session")
+                        .buttonStyle(.plain)
+                        .help("Skip phase")
 
-                    // Reset Button
-                    Button(action: {
-                        pomodoroManager.reset()
-                    }) {
-                        Image(systemName: "arrow.counterclockwise")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                            .padding(8)
-                            .background(AppColors.secondaryCardBackground)
-                            .clipShape(Circle())
+                        Button {
+                            pomodoro.reset()
+                        } label: {
+                            Image(systemName: "arrow.counterclockwise")
+                                .font(.system(size: 12))
+                                .frame(width: 34, height: 34)
+                                .background(AppColors.insetBackground)
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                        }
+                        .buttonStyle(.plain)
+                        .help("Reset session")
                     }
-                    .buttonStyle(.plain)
-                    .help("Reset countdown")
                 }
             }
+
+            // Expandable Pomodoro Settings Disclosure
+            Button {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    isSettingsExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Text("Pomodoro settings")
+                        .underline()
+                    Image(systemName: isSettingsExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 9, weight: .bold))
+                }
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+
+            if isSettingsExpanded {
+                inlineSettingsDrawer
+            }
         }
-        .padding(16)
-        .frame(width: 250)
+        .padding(18)
+        .frame(width: 280)
+        .frame(maxHeight: isStandaloneWindow ? .infinity : nil)
         .background(AppColors.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    @ViewBuilder
+    private var detailsPopover: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("DETAILS")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .tracking(0.8)
+                Spacer()
+                Button {
+                    isDetailsPresented = false
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            TextField("Description...", text: $draftDescription)
+                .textFieldStyle(.plain)
+                .font(.system(size: 12))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(AppColors.insetBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(AppColors.focusBorder, lineWidth: 1.5)
+                )
+
+            HStack(spacing: 8) {
+                Button {
+                    isProjectPickerPresented.toggle()
+                } label: {
+                    Image(systemName: "folder.fill")
+                        .font(.system(size: 12))
+                        .foregroundStyle(draftProjectId != nil ? AppColors.togglMagenta : .secondary)
+                        .padding(6)
+                        .background(AppColors.insetBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 5))
+                }
+                .buttonStyle(.plain)
+                .popover(isPresented: $isProjectPickerPresented) {
+                    ProjectPickerPopover(selectedProjectId: $draftProjectId, selectedTaskId: $draftTaskId) {
+                        isProjectPickerPresented = false
+                    }
+                }
+
+                Button {
+                    isTagPickerPresented.toggle()
+                } label: {
+                    Image(systemName: "tag.fill")
+                        .font(.system(size: 12))
+                        .foregroundStyle(!draftTagIds.isEmpty ? AppColors.togglMagenta : .secondary)
+                        .padding(6)
+                        .background(AppColors.insetBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 5))
+                }
+                .buttonStyle(.plain)
+                .popover(isPresented: $isTagPickerPresented) {
+                    TagPickerPopover(selectedTagIds: $draftTagIds) {
+                        isTagPickerPresented = false
+                    }
+                }
+
+                Button {
+                    draftIsBillable.toggle()
+                } label: {
+                    Text("$")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(draftIsBillable ? AppColors.billable : .secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(draftIsBillable ? AppColors.billable.opacity(0.16) : AppColors.insetBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 5))
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                Button {
+                    pomodoro.updateFocusIntent(
+                        description: draftDescription,
+                        projectId: draftProjectId,
+                        taskId: draftTaskId,
+                        tagIds: draftTagIds,
+                        isBillable: draftIsBillable
+                    )
+                    isDetailsPresented = false
+                } label: {
+                    Text("Save")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(AppColors.togglMagenta)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(14)
+        .frame(width: 260)
+        .background(AppColors.popoverBackground)
+    }
+
+    @ViewBuilder
+    private var inlineSettingsDrawer: some View {
+        @Bindable var bindablePomodoro = pomodoro
+        VStack(alignment: .leading, spacing: 8) {
+            Divider().overlay(AppColors.border)
+
+            Stepper("Focus: \(Int(pomodoro.workDuration / 60)) min", value: Binding(
+                get: { Int(pomodoro.workDuration / 60) },
+                set: { pomodoro.workDuration = TimeInterval(max(1, min(120, $0)) * 60) }
+            ), in: 1...120)
+            .font(.system(size: 11))
+
+            Stepper("Short break: \(Int(pomodoro.shortBreakDuration / 60)) min", value: Binding(
+                get: { Int(pomodoro.shortBreakDuration / 60) },
+                set: { pomodoro.shortBreakDuration = TimeInterval(max(1, min(60, $0)) * 60) }
+            ), in: 1...60)
+            .font(.system(size: 11))
+
+            Stepper("Long break: \(Int(pomodoro.longBreakDuration / 60)) min", value: Binding(
+                get: { Int(pomodoro.longBreakDuration / 60) },
+                set: { pomodoro.longBreakDuration = TimeInterval(max(1, min(60, $0)) * 60) }
+            ), in: 1...60)
+            .font(.system(size: 11))
+
+            Toggle("Auto-start breaks", isOn: $bindablePomodoro.autoStartBreaks)
+                .font(.system(size: 11))
+            Toggle("Auto-start focus sessions", isOn: $bindablePomodoro.autoStartFocus)
+                .font(.system(size: 11))
+            Toggle("Count-up display", isOn: $bindablePomodoro.countUpMode)
+                .font(.system(size: 11))
+            Toggle("macOS notifications", isOn: $bindablePomodoro.notificationsEnabled)
+                .font(.system(size: 11))
+            Toggle("Completion sound", isOn: $bindablePomodoro.soundEnabled)
+                .font(.system(size: 11))
+        }
     }
 }

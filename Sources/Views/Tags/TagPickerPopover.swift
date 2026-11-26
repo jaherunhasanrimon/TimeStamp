@@ -14,6 +14,8 @@ public struct TagPickerPopover: View {
 
     @State private var searchText: String = ""
     @State private var hoveredTagId: UUID? = nil
+    @State private var editingTagId: UUID? = nil
+    @State private var editingTagName: String = ""
 
     public init(
         selectedTagIds: Binding<[UUID]>,
@@ -164,29 +166,68 @@ public struct TagPickerPopover: View {
     private func tagRow(_ tag: Tag) -> some View {
         let isSelected = selectedTagIds.contains(tag.id)
         let isHovered = hoveredTagId == tag.id
+        let isEditing = editingTagId == tag.id
 
         HStack(spacing: 8) {
-            Image(systemName: isSelected ? "checkmark.square.fill" : "square")
-                .font(.system(size: 12))
-                .foregroundStyle(isSelected ? AppColors.togglMagenta : Color.secondary)
+            if isEditing {
+                TextField("Tag name", text: $editingTagName)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(AppColors.insetBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .onSubmit {
+                        commitRename(tag)
+                    }
 
-            Text("#\(tag.name)")
-                .font(.system(size: 12))
-                .foregroundStyle(Color.primary)
-                .lineLimit(1)
-
-            Spacer()
-
-            if isHovered {
-                Button(action: {
-                    deleteTag(tag)
-                }) {
-                    Image(systemName: "trash")
-                        .font(.system(size: 10))
-                        .foregroundStyle(AppColors.destructive)
+                Button(action: { commitRename(tag) }) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(AppColors.billable)
                 }
                 .buttonStyle(.plain)
-                .help("Delete tag")
+
+                Button(action: { editingTagId = nil }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            } else {
+                Image(systemName: isSelected ? "checkmark.square.fill" : "square")
+                    .font(.system(size: 12))
+                    .foregroundStyle(isSelected ? AppColors.togglMagenta : Color.secondary)
+
+                Text("#\(tag.name)")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color.primary)
+                    .lineLimit(1)
+
+                Spacer()
+
+                if isHovered {
+                    Button(action: {
+                        editingTagName = tag.name
+                        editingTagId = tag.id
+                    }) {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Rename tag")
+
+                    Button(action: {
+                        deleteTag(tag)
+                    }) {
+                        Image(systemName: "trash")
+                            .font(.system(size: 10))
+                            .foregroundStyle(AppColors.destructive)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Delete tag")
+                }
             }
         }
         .padding(.horizontal, 8)
@@ -198,13 +239,36 @@ public struct TagPickerPopover: View {
             hoveredTagId = hovering ? tag.id : nil
         }
         .onTapGesture {
-            toggleTag(tag.id)
+            if !isEditing {
+                toggleTag(tag.id)
+            }
         }
         .contextMenu {
+            Button("Rename tag...") {
+                editingTagName = tag.name
+                editingTagId = tag.id
+            }
+
             Button("Delete tag", role: .destructive) {
                 deleteTag(tag)
             }
         }
+    }
+
+    private func commitRename(_ tag: Tag) {
+        let trimmed = editingTagName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            editingTagId = nil
+            return
+        }
+        let conflict = store.tags.contains {
+            $0.id != tag.id && $0.name.caseInsensitiveCompare(trimmed) == .orderedSame
+        }
+        if !conflict {
+            tag.name = trimmed
+            store.saveTag(tag)
+        }
+        editingTagId = nil
     }
 
     private func toggleTag(_ id: UUID) {

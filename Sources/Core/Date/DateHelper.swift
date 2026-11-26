@@ -24,6 +24,17 @@ public enum DateHelper {
         return formatter
     }()
 
+    public static var isoCalendar: Calendar {
+        var cal = Calendar.current
+        cal.firstWeekday = 2 // Monday
+        return cal
+    }
+
+    public static func startOfWeek(for date: Date, in calendar: Calendar = DateHelper.isoCalendar) -> Date {
+        let comps = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
+        return calendar.date(from: comps) ?? calendar.startOfDay(for: date)
+    }
+
     public static func startOfDay(for date: Date, calendar: Calendar = .current) -> Date {
         calendar.startOfDay(for: date)
     }

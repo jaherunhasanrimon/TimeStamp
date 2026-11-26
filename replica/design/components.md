@@ -1,106 +1,44 @@
-# Component Specs: TimeStamp (Toggl Track Replica)
+# TimeStamp — Component Specifications (Parity Complete)
 
-Specification of UI primitives and components based on Toggl Track macOS Desktop reference screenshots (`replica/screens/`).
+Reference designs: `replica/screens/toggl_macos_main_empty.jpg`, `toggl_macos_pomodoro_window.jpg`, `toggl_macos_project_picker.jpg`, `toggl_macos_autocomplete.jpg`, `toggl_macos_goal_popover.jpg`, and `replica/design/tokens.json`.
 
----
+## 1. Compact & Workspace Active Timer Bar (`ActiveTimerBar`)
+- **Left**: Tomato Pomodoro trigger button (`32x32` circular pill -> `PomodoroPopoverView` & standalone window pop-out).
+- **Center**: Single-line `"What are you working on?"` input (`AutocompletePopoverView` opens dynamically on text or `@`/`#`; keyboard `↑`/`↓`/`Return`/`Esc` supported). In manual mode (`⌘D`), inline `[ Start -> End | Duration ]` quick entry replaces timer ticker.
+- **Action Row**: Project pill (`ProjectPickerPopover`), Tag `#` pill (`TagPickerPopover`), Billable `$` toggle pill, Favorites quick-resume menu, active running entry Quick Edit button (`⌘E`).
+- **Right Controls**:
+  - Live tabular `0:00:00` (`TimeCalculator.formatCompactDuration`)
+  - Primary circular Play (`AppColors.togglMagenta`) / Stop (`AppColors.destructive`) CTA
+  - Vertical stacked mode toggles: `[ ▶ Timer | + Manual ]`
 
-## 1. Window Shell & Layout Modes
+## 2. Project Picker (`ProjectPickerPopover` & `ProjectTaskPickerButton`)
+- Emerald-green focus-bordered search input (`AppColors.focusBorder`, auto-focused).
+- `• No Project` clear selection row.
+- Client-grouped active project sections (`NO CLIENT`, `<CLIENT>` uppercase headers) automatically excluding archived projects.
+- Expandable active Tasks under projects (`>` chevron toggle or auto-expanded when search matches task name).
+- Keyboard navigation (`↑`/`↓`/`Return`/`Esc`).
+- Sticky bottom bar: magenta `+` icon with primary-colored `"Create project"` label (`ProjectEditorSheet`).
 
-### Compact Tracker Window (S01)
-- **Role**: Dedicated daily companion tracker window.
-- **Dimensions**: Fixed default ~440px wide, ~700px high (min width 380px, max width 520px).
-- **Window Chrome**: Standard macOS title bar with traffic lights, title centered ("Workspace" / Workspace Name), dark title bar background matching app surface (`#14101A`).
-- **Surface**: Dark plum background (`#14101A`).
+## 3. Capsule View Switcher & Empty State (`CapsuleViewSwitcher`, `TogglEmptyStateView`)
+- Rounded capsule track (`AppColors.capsuleTrack`) with elevated active pill thumb (`AppColors.capsuleActiveThumb`): `[ List | Calendar ]`.
+- Crisp vector illustration (`Path`/`RoundedRectangle` laptop with magenta center badge and hands) inside white spotlight circle cleanly centered above `"Let's get tracking!"`.
 
-### Full Dashboard Window (S05)
-- **Role**: In-depth reporting, full calendar timeline, and project/client administration.
-- **Dimensions**: Min width 960px, ideal width 1180px, min height 640px.
-- **Layout**: Collapsible left sidebar navigation (`#1E1322`) + sticky top timer bar + main content workspace (`#14101A`).
+## 4. Goal Card & Goal Editor Popover (`GoalsCardView`, `GoalEditorSheet`)
+- Collapsible card header `Goals (completed/total)` with `+` add and collapse chevron (zero 4-goal artificial paywall).
+- Per-goal circular badge progress ring gradient (`goalGold` / `success` / `destructive`) + borderless `KEEP GOING` / `TRACKING` / `COMPLETED` / `OVER LIMIT` action.
+- `GoalEditorSheet` matches Toggl `GOAL` popover layout: emerald-bordered title + circular Icon dropdown, `TRACK` multi-project picker + Tags + Client + Billable filter, `FOR` (`at least` / `less than` + decimal hours + `every day` / `every weekday` / `every week`), `UNTIL` (`No end date` checkbox + date picker), Live Preview card, `Delete`, and `Save`.
 
----
+## 5. Pomodoro Panel & Window (`PomodoroPopoverView`)
+- `"I'm focusing on..."` button opening `"DETAILS"` popover (`Description...`, Project picker, Tag picker, `$` Billable toggle, `Save`).
+- 60-tick circular radial dial with outer phase progress stroke (`togglMagenta` work / `billable` break), tabular countdown or count-up timer, `"Start session"` CTA, Pause/Skip/Reset controls, `"Pomodoro settings ▸"` inline drawer, and pop-out standalone `"Pomodoro"` window.
 
-## 2. TimerBar (Top Sticky Bar)
+## 6. Interactive Calendar (`CalendarTimelineView`, `DayTimelineGridView`, `WeekTimelineGridView`, `CalendarBlockView`)
+- Fixed compact weekday header + 24-hour grid (`1/5/15/30m` configurable snap), double-click empty slot creation (`CalendarQuickCreateSheet`), block drag-to-move, top/bottom resize handles, `$` billable badge, live running block, right-click context menu, and opt-in EventKit Apple Calendar dashed overlay.
 
-- **Variants**:
-  - `compact`: S01 companion window.
-  - `full`: S05 dashboard window.
-- **Layout**:
-  - **Left**: Pomodoro icon button (circular tomato indicator) or status glyph.
-  - **Center-Left**: Borderless description text field with placeholder `"What are you working on?"`. Font: 13pt regular, text color `#F5F4F8`.
-  - **Center-Right**: Monospaced duration ticker `"0:00:00"`. Font: 15pt bold monospaced digits.
-  - **Right Action**:
-    - When Idle: Circular Magenta Start button (36x36pt, `#E54583`, white play triangle) + manual entry toggle icon.
-    - When Running: Circular Red Stop button (36x36pt, `#FF453A`, white square) + secondary Pause/Resume button.
-- **Secondary Action Row** (under description):
-  - 📁 **Project/Task Button**: Icon-only or icon + project pill. Opens `ProjectPickerPopover`.
-  - 🏷️ **Tag Button**: Tag glyph. Opens tag selection popover.
-  - 💲 **Billable Button**: Dollar glyph (`#9E97AA` when non-billable, `#30D158` when billable).
+## 7. Multi-View Reports & Exports (`ReportsView`, `ExportService`)
+- `[Summary | Detailed | Weekly]` tabs with `< Period >` stepper, Client/Project/Tag/Billable/Description filters, 4 KPIs, Stacked Daily Bar (`ReportsDailyBarChartView`), Donut (`ReportsDonutChartView`), Project->Task Hierarchy (`ReportsHierarchyView`), Detailed Table (`ReportsDetailedTableView`), Mon–Sun Matrix (`ReportsWeeklyMatrixView`), CSV/JSON with tags & billable math, and native CoreGraphics vector PDF export.
 
----
-
-## 3. ProjectPickerPopover (S02)
-
-- **Role**: Instant fuzzy search & hierarchical project/client selection.
-- **Anchor**: Attached to the 📁 Folder icon in `TimerBar`.
-- **Dimensions**: Width ~300px, max height ~400px.
-- **Components**:
-  - **Search Input**: Top text field with bright green outline focus ring (`#36B37E`, 2px radius 8px). Placeholder: `"Search by project, task or client"`.
-  - **Deselect Row**: `"• No Project"` with subtle hover highlight.
-  - **Grouped List**:
-    - Client header: Uppercase tracking text (e.g., `NO CLIENT`, `CLIENT NAME`). Font: 11pt bold, color `#9E97AA`.
-    - Project row: 8px colored circle dot + Project name + optional task count / expansion.
-    - Hover state: Background `#2A223A` with rounded corners.
-  - **Sticky Footer**:
-    - Divider line (`#362B4A`).
-    - Button: `+ Create project` (magenta `+` icon, 13pt medium text).
-
----
-
-## 4. SegmentedSwitcher (View Toggle)
-
-- **Role**: Quick switching between List and Calendar modes.
-- **Shape**: Full-width capsule / pill container with dark inset background (`#100D15`).
-- **Options**: `[ List | Calendar ]` (and `Timesheet` in full view).
-- **Selected State**: Elevated rounded thumb (`#2A223A`) with white text.
-- **Subheader Text**:
-  - Left: `TODAY TOTAL 0:00:00` (11pt uppercase, bold ticker).
-  - Right: `EXPLORE ON WEB APP ↗` (11pt uppercase link).
-
----
-
-## 5. GoalsCard (S01)
-
-- **Role**: Daily / weekly goal tracking drawer.
-- **Container**: Rounded card (`#201A2C`), 12px radius, subtle border (`#362B4A`).
-- **Header**:
-  - Left: `Goals (4/4)` (13pt bold).
-  - Right: `+` add goal button and `^` collapse chevron.
-- **Item Row**:
-  - Left: Circular bronze icon badge (`#D4973B` with dark glyph: target, book, timer).
-  - Center: Goal Title (e.g. `IELTS Daily 30 to 45 minutes`, 13pt regular).
-  - Right: Status badge `KEEP GOING` (10pt bold uppercase, `#9E97AA`).
-
----
-
-## 6. EmptyStateIllustration
-
-- **Variants**:
-  - `welcome`: Hands on laptop illustration inside white circle backdrop + `"Let's get tracking!"` + `"Get ready to track time and boost your productivity."`.
-  - `no-entries`: Purple binoculars (`#BF5AF2`) under soft pink clouds (`#E8A0BF`) + `"No entries found in the selected period"` + `"Load old entries"` button.
-  - `empty-reports`: Binoculars graphic + `"Nothing to see here..."` + `"We couldn't find any time entries."`.
-
----
-
-## 7. ReportsSummaryScreen (S06)
-
-- **Subnav Tabs**: `[ Summary | Detailed | Workload | Profitability | My reports ]` with active magenta underline indicator.
-- **Toolbar**:
-  - Date Range Stepper: `< [Calendar] This week W48 >`.
-  - Filter Pills: Capsule buttons with dropdown chevron (`Client`, `Project`, `Tag`, `Description`, `+ Add filter`).
-- **4 KPI Metric Cards**:
-  - Grid: 4 equal cards in a row (`Total Hours`, `Billable Hours`, `Amount`, `Average Daily Hours`).
-  - Values: Large bold numbers or `-` placeholder.
-- **Chart Cards**:
-  - Card 1: `Duration by day` (Bar chart).
-  - Card 2: `Client distribution` (Donut chart with `Slice by: Clients v`).
-  - Table: `Project and member breakdown`.
+## 8. Companion Windows & macOS Settings
+- **Floating Mini-Timer** (`FloatingMiniTimerView`, `⇧⌘M`) with `NSWindow.Level.floating` pin toggle.
+- **Menu Bar Extra** (`MenuBarLabelView`, `MenuBarPopoverView`) with optional project/description suffix, Favorites quick-start, Pomodoro ticker, and Mini-Timer launcher.
+- **Idle Resolution Sheet** (`IdleDetectionManager` via CoreGraphics HID `CGEventSource`) + **Workday Reminders** (`ReminderManager`) + **Opt-in Local Activity Recorder & Autotracker** (`ActivityTrackerManager`) + 6-tab **Settings** (`SettingsView`).

@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Toggl Track authentic empty state illustrations.
-/// Variant 1: "Let's get tracking!" typing hands on laptop (Reference Image 1).
-/// Variant 2: "No entries found" purple binoculars with soft pink clouds (Reference Images 3 & 4).
+/// Authentic Toggl Track Empty State Illustrations:
+/// 1. White circle spotlight with vector laptop, pink accent dot, & typing hands: "Let's get tracking!"
+/// 2. Purple Binoculars under Soft Pink Clouds: "No entries found in the selected period" / "Nothing to see here..."
 public struct TogglEmptyStateView: View {
     public enum Style {
         case letsGetTracking
@@ -11,7 +11,7 @@ public struct TogglEmptyStateView: View {
 
     public let style: Style
 
-    public init(style: Style = .letsGetTracking) {
+    public init(style: Style) {
         self.style = style
     }
 
@@ -19,44 +19,62 @@ public struct TogglEmptyStateView: View {
         VStack(spacing: 16) {
             switch style {
             case .letsGetTracking:
-                // Spotlight with laptop & typing hands graphic
+                // Clean-room SwiftUI vector illustration matching Toggl macOS welcome spotlight
                 ZStack {
                     Circle()
-                        .fill(Color.white.opacity(0.92))
-                        .frame(width: 110, height: 110)
+                        .fill(Color.white)
+                        .frame(width: 112, height: 112)
+                        .shadow(color: Color.black.opacity(0.08), radius: 6, y: 2)
 
-                    VStack(spacing: -8) {
-                        // Hands
-                        HStack(spacing: 24) {
-                            Text("👐")
-                                .font(.system(size: 32))
+                    VStack(spacing: 0) {
+                        // Laptop lid with centered pink accent dot
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 5)
+                                .fill(Color(hex: "#362545"))
+                                .frame(width: 58, height: 42)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 5)
+                                        .stroke(Color(hex: "#6B577B"), lineWidth: 2)
+                                )
+
+                            Circle()
+                                .fill(AppColors.togglMagenta)
+                                .frame(width: 12, height: 12)
                         }
+                        .offset(y: 4)
 
-                        // Laptop base
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(Color(hex: "#2C1E32"))
-                            .frame(width: 80, height: 12)
+                        // Laptop keyboard deck + gold typing hands
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(Color(hex: "#261833"))
+                                .frame(width: 82, height: 10)
+
+                            HStack(spacing: 14) {
+                                handShape(mirrored: false)
+                                handShape(mirrored: true)
+                            }
+                            .offset(y: -8)
+                        }
                     }
                 }
                 .padding(.top, 10)
 
                 VStack(spacing: 6) {
                     Text("Let's get tracking!")
-                        .font(.system(size: 20, weight: .bold))
+                        .font(.system(size: 19, weight: .bold))
                         .foregroundStyle(Color.primary)
 
                     Text("Get ready to track time and boost your productivity.")
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
+                        .padding(.horizontal, 28)
                 }
 
             case .binoculars(let title, let subtitle, let buttonTitle, let onAction):
                 // Purple Binoculars under Soft Pink Clouds
                 VStack(spacing: 12) {
                     ZStack {
-                        // Soft Pink Clouds
                         HStack(spacing: -10) {
                             Circle()
                                 .fill(Color(hex: "#E8A0BF").opacity(0.85))
@@ -71,7 +89,6 @@ public struct TogglEmptyStateView: View {
                         }
                         .offset(y: -14)
 
-                        // Purple Binoculars
                         HStack(spacing: 8) {
                             Circle()
                                 .stroke(Color(hex: "#BF5AF2"), lineWidth: 9)
@@ -99,15 +116,15 @@ public struct TogglEmptyStateView: View {
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
-                            .padding(.horizontal, 24)
+                            .frame(maxWidth: 320)
                     }
 
-                    if let btn = buttonTitle, let action = onAction {
+                    if let btnTitle = buttonTitle, let action = onAction {
                         Button(action: action) {
-                            Text(btn)
+                            Text(btnTitle)
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(Color.primary)
-                                .padding(.horizontal, 16)
+                                .padding(.horizontal, 14)
                                 .padding(.vertical, 6)
                                 .background(AppColors.secondaryCardBackground)
                                 .clipShape(RoundedRectangle(cornerRadius: 6))
@@ -124,5 +141,23 @@ public struct TogglEmptyStateView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
+    }
+
+    @ViewBuilder
+    private func handShape(mirrored: Bool) -> some View {
+        HStack(spacing: 2) {
+            ForEach(0..<4, id: \.self) { idx in
+                RoundedRectangle(cornerRadius: 2.5)
+                    .fill(Color(hex: "#F2C66D"))
+                    .frame(width: 4.5, height: idx == 1 || idx == 2 ? 12 : 9)
+            }
+        }
+        .padding(.horizontal, 4)
+        .padding(.vertical, 3)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color(hex: "#E6B655"))
+        )
+        .scaleEffect(x: mirrored ? -1 : 1, y: 1)
     }
 }

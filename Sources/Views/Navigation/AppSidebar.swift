@@ -53,6 +53,7 @@ public struct AppSidebar: View {
                 Section("MANAGE") {
                     sidebarRow(for: .projects)
                     sidebarRow(for: .clients)
+                    sidebarRow(for: .tags)
                 }
 
                 Section("ADMIN") {

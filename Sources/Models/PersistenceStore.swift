@@ -51,6 +51,7 @@ public final class PersistenceStore {
     public private(set) var tags: [Tag] = []
     public private(set) var timeEntries: [TimeEntry] = []
     public private(set) var goals: [Goal] = []
+    public private(set) var lastDeletedEntry: TimeEntry? = nil
 
     public let isInMemory: Bool
     private let fileURL: URL?
@@ -160,8 +161,11 @@ public final class PersistenceStore {
             entry.taskId = nil
         }
         // Unlink project from goals
-        for goal in goals where goal.projectId == id {
-            goal.projectId = nil
+        for goal in goals where goal.projectId == id || goal.projectIds.contains(id) {
+            goal.projectIds.removeAll { $0 == id }
+            if goal.projectId == id {
+                goal.projectId = goal.projectIds.first
+            }
         }
         save()
     }
@@ -236,14 +240,17 @@ public final class PersistenceStore {
     public func entryMatchesGoal(
         entry: TimeEntry,
         projectId: UUID?,
+        projectIds: [UUID] = [],
         clientId: UUID?,
         taskId: UUID?,
         tagIds: [UUID],
         billableFilter: GoalBillableFilter
     ) -> Bool {
         // 1. Project & Client association (Correction 2: entries belong to projects, not clients)
-        if let pId = projectId {
-            guard entry.projectId == pId else { return false }
+        let allowedProjectIds = projectIds.isEmpty ? (projectId.map { [$0] } ?? []) : projectIds
+        if !allowedProjectIds.isEmpty {
+            guard let entryProjectId = entry.projectId,
+                  allowedProjectIds.contains(entryProjectId) else { return false }
         } else if let cId = clientId {
             guard let entryProjectId = entry.projectId,
                   let project = project(for: entryProjectId),
@@ -313,13 +320,24 @@ public final class PersistenceStore {
             return (0, 0, false, false)
         }
 
-        // Sum completed entries in this date interval
+        // Respect goal active date window using day boundaries
+        let evalDay = calendar.startOfDay(for: now)
+        if evalDay < calendar.startOfDay(for: goal.startDate) {
+            return (0, 0, false, false)
+        }
+        if let goalEnd = goal.endDate, evalDay > calendar.startOfDay(for: goalEnd) {
+            return (0, 0, false, false)
+        }
+
+        // Sum completed entries in this date interval (exclude running/paused active entries)
         var completedTotal: TimeInterval = 0
         for entry in timeEntries {
+            guard entry.endDate != nil else { continue }
             guard entry.startDate >= intervalStart && entry.startDate < intervalEnd else { continue }
             if entryMatchesGoal(
                 entry: entry,
                 projectId: goal.projectId,
+                projectIds: goal.effectiveProjectIds,
                 clientId: goal.clientId,
                 taskId: goal.taskId,
                 tagIds: goal.tagIds,
@@ -329,18 +347,20 @@ public final class PersistenceStore {
             }
         }
 
-        // Add contribution from currently running active timer if matching (anti-double-counting)
-        if let active = activeEntry, active.isRunning {
-            if entryMatchesGoal(
-                entry: active,
-                projectId: goal.projectId,
-                clientId: goal.clientId,
-                taskId: goal.taskId,
-                tagIds: goal.tagIds,
-                billableFilter: goal.billableFilter
-            ) {
-                completedTotal += activeDuration
-            }
+        // Add contribution from currently running/paused active timer if matching & within period
+        if let active = activeEntry,
+           active.endDate == nil,
+           active.startDate >= intervalStart && active.startDate < intervalEnd,
+           entryMatchesGoal(
+               entry: active,
+               projectId: goal.projectId,
+               projectIds: goal.effectiveProjectIds,
+               clientId: goal.clientId,
+               taskId: goal.taskId,
+               tagIds: goal.tagIds,
+               billableFilter: goal.billableFilter
+           ) {
+            completedTotal += activeDuration
         }
 
         let target = max(1.0, goal.targetDuration)
@@ -364,10 +384,13 @@ public final class PersistenceStore {
         targetType: GoalTargetType,
         cadence: GoalCadence,
         projectId: UUID?,
+        projectIds: [UUID] = [],
         clientId: UUID?,
         taskId: UUID?,
         tagIds: [UUID],
         billableFilter: GoalBillableFilter,
+        startDate: Date = Date(),
+        endDate: Date? = nil,
         in calendar: Calendar = .current,
         now: Date = Date()
     ) -> (matchingDuration: TimeInterval, percentage: Double, isCompleted: Bool, isOverLimit: Bool) {
@@ -377,10 +400,13 @@ public final class PersistenceStore {
             targetType: targetType,
             cadence: cadence,
             projectId: projectId,
+            projectIds: projectIds,
             clientId: clientId,
             taskId: taskId,
             tagIds: tagIds,
-            billableFilter: billableFilter
+            billableFilter: billableFilter,
+            startDate: startDate,
+            endDate: endDate
         )
         let p = progress(for: tempGoal, in: calendar, now: now)
         return (matchingDuration: p.completedDuration, percentage: p.percentage, isCompleted: p.isCompleted, isOverLimit: p.isOverLimit)
@@ -398,8 +424,92 @@ public final class PersistenceStore {
     }
 
     public func deleteTimeEntry(id: UUID) {
+        if let existing = timeEntries.first(where: { $0.id == id }), existing.endDate != nil {
+            self.lastDeletedEntry = existing
+        }
         timeEntries.removeAll { $0.id == id }
         save()
+    }
+
+    /// Restores the most recently deleted completed time entry
+    @discardableResult
+    public func undoLastDelete() -> TimeEntry? {
+        guard let deleted = lastDeletedEntry else { return nil }
+        lastDeletedEntry = nil
+        saveTimeEntry(deleted)
+        return deleted
+    }
+
+    public func clearUndoBuffer() {
+        lastDeletedEntry = nil
+    }
+
+    /// Creates a persisted duplicate of a completed entry
+    @discardableResult
+    public func duplicateTimeEntry(_ entry: TimeEntry) -> TimeEntry {
+        let now = Date()
+        let copy = TimeEntry(
+            entryDescription: entry.entryDescription,
+            startDate: entry.startDate,
+            endDate: entry.endDate,
+            accumulatedDuration: entry.effectiveDuration,
+            isPaused: false,
+            createdAt: now,
+            updatedAt: now,
+            projectId: entry.projectId,
+            taskId: entry.taskId,
+            tagIds: entry.tagIds,
+            isBillable: entry.isBillable,
+            isFavorite: false
+        )
+        saveTimeEntry(copy)
+        return copy
+    }
+
+    /// Toggles favorite status for quick-start pinning
+    public func toggleFavorite(id: UUID) {
+        guard let entry = timeEntries.first(where: { $0.id == id }) else { return }
+        entry.isFavorite.toggle()
+        entry.updatedAt = Date()
+        save()
+    }
+
+    /// Deduplicated favorite entries sorted by most recent usage
+    public var favoriteEntries: [TimeEntry] {
+        var seenKeys: Set<String> = []
+        var result: [TimeEntry] = []
+        let candidates = timeEntries
+            .filter { $0.isFavorite && $0.endDate != nil }
+            .sorted { $0.startDate > $1.startDate }
+        for entry in candidates {
+            let key = "\(entry.entryDescription)|\(entry.projectId?.uuidString ?? "")|\(entry.taskId?.uuidString ?? "")|\(entry.isBillable)"
+            if seenKeys.insert(key).inserted {
+                result.append(entry)
+            }
+        }
+        return result
+    }
+
+    /// Recent unique completed entries for description autocomplete suggestions
+    public func recentUniqueEntries(matching query: String, limit: Int = 6) -> [TimeEntry] {
+        let trimmed = query.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !trimmed.isEmpty else { return [] }
+        var seen: Set<String> = []
+        var matches: [TimeEntry] = []
+        let candidates = timeEntries
+            .filter { $0.endDate != nil && !$0.entryDescription.trimmingCharacters(in: .whitespaces).isEmpty }
+            .sorted { $0.startDate > $1.startDate }
+        for entry in candidates {
+            let desc = entry.entryDescription.lowercased()
+            let projName = entry.projectId.flatMap { project(for: $0)?.name.lowercased() } ?? ""
+            guard desc.contains(trimmed) || projName.contains(trimmed) else { continue }
+            let key = "\(entry.entryDescription)|\(entry.projectId?.uuidString ?? "")|\(entry.taskId?.uuidString ?? "")|\(entry.tagIds.map(\.uuidString).sorted().joined(separator: ","))|\(entry.isBillable)"
+            if seen.insert(key).inserted {
+                matches.append(entry)
+                if matches.count >= limit { break }
+            }
+        }
+        return matches
     }
 
     // MARK: - Utilities

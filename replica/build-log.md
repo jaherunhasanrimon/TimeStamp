@@ -1,93 +1,57 @@
-# Replica Build Log: TimeStamp (Toggl Track macOS Replica)
+# TimeStamp — Toggl Track Feature Parity Build Log
 
-**Date**: 2026-11-24  
-**Target Platform**: macOS 14.0+ Apple Silicon (Swift & SwiftUI)  
-**Reference Sources**: `replica/screens/` (8 high-res reference screenshots)
+## Executive Summary
+Systematic parity engineering across Phases 0–6 completed cleanly on Apple Silicon (`macOS 14.0+`, Swift 5.10 / SwiftUI), closing all identified bugs, missing workflows, interaction gaps, and visual differences against Toggl Track for macOS while preserving TimeStamp branding, local data safety, and zero paywalls.
 
----
+## Phase History & Verified Outcomes
 
-## Log Entries
+### Phase 0 — Bug Triage, Calculation Integrity & Test Infrastructure Repair
+- Fixed active-timer double-counting in `PersistenceStore.progress(for:)` (`Sources/Models/PersistenceStore.swift`) and `CompactTrackerView.todayTotalDuration` (`Sources/Views/Tracker/CompactTrackerView.swift`) by skipping uncompleted `endDate == nil` entries in the completed loop and accumulating active elapsed time from `TimerManager` once.
+- Guarded `UNUserNotificationCenter.current()` and `NSSound.beep()` in `NotificationManager.swift` with `hasValidAppBundle` (`Bundle.main.bundleURL.pathExtension == "app"`) so CLI native test runners never crash.
+- Isolated in-memory test runs of `PomodoroManager` (`TimerManager.isInMemoryStore`) from `UserDefaults.standard`.
+- Fixed `QAAuditRunner.swift` duplicate `@main` symbol collision into `@Suite("QA Audit Integration Tests")` inside `scripts/run-qa-tests.sh` using native `swift test --enable-swift-testing --disable-xctest` linked against `Testing.__swiftPMEntryPoint()`.
+- Switched default app theme (`@AppStorage("appTheme")`) from `"dark"` to `"system"` (`Sources/App/TimeStampApp.swift`).
 
-### Priority 2: Pomodoro Engine & macOS Notifications
-- **Status**: Completed & Verified
-- **Components & Models Built**:
-  - `Sources/Services/Notifications/NotificationManager.swift`:
-    - Integrates native macOS `UNUserNotificationCenter` for desktop alerts with authorization handling and audio bell feedback.
-  - `Sources/Core/Pomodoro/PomodoroManager.swift`:
-    - Full `@Observable` state machine managing `.work`, `.shortBreak`, `.longBreak`, and interval cycle count (default: 4 work sessions before a 15-minute long break).
-    - Default durations: 25m focus, 5m short break, 15m long break.
-    - Start, Pause, Resume, Skip, Reset, and Reset Cycle controls.
-    - **Timer Integration**: Starting work automatically syncs and starts productive tracking in `TimerManager`. Work session completion automatically stops `TimerManager` and saves the `TimeEntry`.
-    - **Break Isolation**: Breaks explicitly ensure `TimerManager` is stopped; break time is strictly NOT logged as productive work.
-    - **Background & Sleep Immunity**: Uses wall-clock timestamp deltas (`Date().timeIntervalSince(start)`) and `SleepWakeMonitor` to ensure countdown integrity across macOS sleep and backgrounding.
-    - **State Persistence**: Serializes running state, completed session count, and elapsed time to `UserDefaults` for seamless restoration across app restarts.
-  - `Sources/Views/Pomodoro/PomodoroPopoverView.swift`:
-    - Polished Toggl-style popover anchored to the 🍅 tomato button in `ActiveTimerBar`.
-    - Displays session badge, circular progress ring, large monospaced countdown digits (`24:59`), completed interval pills (🍅🍅⚪⚪), and Start / Pause / Skip / Reset buttons.
-  - `Sources/Views/Timer/ActiveTimerBar.swift`:
-    - Activated the tomato icon button with live pulsing ring during active sessions and popover attachment.
-  - `Sources/Views/MenuBar/MenuBarLabelView.swift` & `MenuBarPopoverView.swift`:
-    - Displays active Pomodoro session countdown (`🍅 24:15`) in the macOS system menu bar, with quick pause/resume controls in the menu bar popover.
-  - `Sources/Views/Settings/TimerPreferencesSectionView.swift`:
-    - Added user-configurable duration pickers (Focus, Short Break, Long Break) and native notification permission authorization button.
-  - `Tests/PomodoroEngineTests.swift`:
-    - 7 comprehensive automated tests verifying default durations, start/pause/resume, work completion transition, 4-cycle long break, break isolation, custom durations, and notification safety.
+### Phase 1 — Core Timer, Entry UX & Visual Foundations
+- Added live description autocomplete popover (`AutocompletePopoverView.swift`) with `RECENT ENTRIES` & `PROJECTS · Client` results, highlighted matching substrings, and keyboard (`↑`/`↓`/`Return`/`Esc`) navigation.
+- Added `@` Project picker and `#` Tag picker inline triggers inside `ActiveTimerBar.swift`.
+- Added Toggl vertical Play / `+` mode toggle circles, inline Manual Mode (`⌘D`), `0:00:00` compact bar ticker (`TimeCalculator.formatCompactDuration`), `⌘E` live running-entry editing (`EntryEditSheet`), duplicate entry (`PersistenceStore.duplicateTimeEntry`), non-blocking 6s Undo Delete banner (`undoLastDelete`), Favorite entries (`isFavorite` + quick-start), same-day identical collapsible entry groups (`EntryGroupingHelper`), entry text + billable filters (`EntryFilter`), enforced Default Project preference (`applyDefaultProjectIfIdle`), global menu shortcuts (`⌘N`, `⌘D`, `⌘S`, `⌘O`, `⌘E`, `⌘,`, `⇧⌘M`, `⇧⌘E`), vector laptop/hands empty-state artwork (`TogglEmptyStateView`), and Toggl pill capsule switcher (`CapsuleViewSwitcher`).
+- Verified with `Tests/Phase1CoreTrackingTests.swift` (7 tests).
 
----
+### Phase 2 — Projects, Clients, Tasks & Tags Parity
+- Extended `Project` with backward-compatible `estimatedHours` (`Sources/Models/Project.swift`).
+- Upgraded `ProjectEditorSheet` with Hourly Rate, Time Estimate hours, and Billable by default controls; added effective rate badges and estimate progress bars to `ProjectRowView`.
+- Added Client filter dropdown in `ProjectsListView`; added Currency and Default Hourly Rate controls to `ClientEditorSheet` and rate pill display in `ClientRowView`.
+- Polished `ProjectPickerPopover`: excluded archived projects, added expandable inline active Tasks, keyboard navigation, and styled `+ Create project` with magenta `+` and primary text color (`toggl_macos_project_picker.jpg` parity).
+- Upgraded `ProjectTaskPickerButton` to use `ProjectPickerPopover` across `EntryEditSheet` and `MenuBarPopoverView`.
+- Added inline tag rename in `TagPickerPopover` and created dedicated `TagsListView` wired into `SidebarDestination.tags` (`AppSidebar`, `DetailContainerView`).
+- Verified with `Tests/Phase2ProjectsTagsTests.swift` (4 tests).
 
-### Priority 1: Full Goals Engine & Persistence
-- **Status**: Completed & Verified
-- `Goal.swift`, `PersistenceStore.swift`, `GoalEditorSheet.swift`, `GoalsCardView.swift`, `GoalEngineTests.swift` (8 tests passing).
+### Phase 3 — Interactive Calendar & Multi-View Reports
+- Enhanced `CalendarLayoutHelper` with configurable pixel-to-time snapping (`1/5/15/30m`), duration-preserving `movedDates`, and edge-clamped `resizedDates`.
+- Upgraded `CalendarBlockView`, `DayTimelineGridView`, `WeekTimelineGridView`, and `CalendarTimelineView` with double-click empty-slot creation (`CalendarQuickCreateSheet`), drag-to-move, top/bottom resize handles, `$` billable badges, live active timer block, and right-click context menu (`Continue`, `Duplicate`, `Edit`, `Toggle Billable`, `Delete`).
+- Added opt-in read-only local `AppleCalendarService` (`EventKit`) overlay with `NSCalendarsUsageDescription` & `NSCalendarsFullAccessUsageDescription` in `TimeStamp.app/Contents/Info.plist` (honestly documenting Google/Outlook as requiring external OAuth).
+- Built multi-tab `ReportsView` (`Summary`, `Detailed`, `Weekly`) featuring `< Period >` stepper, Client/Project/Tag/Billable/Description filters, 4 KPIs, Stacked Bar (`ReportsDailyBarChartView`), Donut (`ReportsDonutChartView`), Expandable Project->Task Hierarchy (`ReportsHierarchyView`), Sortable Detailed Table (`ReportsDetailedTableView`), Mon–Sun Matrix (`ReportsWeeklyMatrixView`), extended CSV/JSON columns, and native CoreGraphics PDF report export (`ExportService.generatePDF`).
+- Verified with `Tests/Phase3CalendarReportsTests.swift` (3 tests).
 
----
+### Phase 4 — Goals & Pomodoro Parity
+- Extended `Goal` (`Sources/Models/Goal.swift`) with multi-project `projectIds: [UUID]`, `startDate`, `endDate` (`UNTIL`), while preserving original canonical `rawValue` strings (`"Daily"`, `"At least"`, etc.) and tolerant decoding so real production `timestamp_store.json` files upgrade seamlessly without error.
+- Updated `PersistenceStore.entryMatchesGoal`, `progress`, and `deleteProject` for multi-project & active date windows without sample seeding or goal-count limits.
+- Rebuilt `GoalEditorSheet` to match `toggl_macos_goal_popover.jpg` (`GOAL` header, icon selector, multi-project `TRACK` picker, decimal hours `FOR`, `UNTIL No end date`, Live Preview, `Delete`, `Save`) and polished borderless `KEEP GOING` inside `GoalsCardView`.
+- Upgraded `PomodoroManager` & `PomodoroPopoverView` to match `toggl_macos_pomodoro_window.jpg` (`"I'm focusing on..."` -> `DETAILS` popover, 60-tick dial, `"Start session"`, `"Pomodoro settings ▸"`, standalone `Window("Pomodoro")`, `autoStartBreaks`, `autoStartFocus`, `countUpMode`, notification & sound toggles).
+- Verified with `Tests/Phase4GoalsPomodoroTests.swift` (3 tests).
 
-### Visual Reconstruction (Earlier Phases)
-- `S01`: Compact Desktop Tracker Window (`CompactTrackerView.swift`, `ActiveTimerBar.swift`, `CircularPlayButton.swift`, `CapsuleViewSwitcher.swift`, `TogglEmptyStateView.swift`).
-- `S02`: Project & Task Selector Popover (`ProjectPickerPopover.swift`).
-- `S03`: Daily Time Entries Log (`DayGroupHeaderView.swift`, `TimeEntryRowView.swift`, `EntriesListView.swift`).
-- `S04`: Interactive Calendar Timeline (`CalendarTimelineView.swift`).
-- `S05`: Full App Dashboard & Workspace Navigation (`AppSidebar.swift`).
-- `S06`: Reports & Analytics (`ReportsView.swift`, `ReportsDonutChartView.swift`).
+### Phase 5 — Native macOS Companion, Mini-Timer, Idle, Reminders, Autotracker & Settings
+- Created `FloatingMiniTimerView` (`Window("Mini Timer", id: "mini-timer")`, `⇧⌘M`) with always-on-top pin (`NSWindow.Level.floating`), Pause/Stop, and quick-start input.
+- Upgraded `MenuBarLabelView` (optional project/description beside duration) and `MenuBarPopoverView` (Favorites/Recent quick resume + Mini-Timer button).
+- Added `IdleDetectionManager` (`CGEventSource.secondsSinceLastEventType` HID inactivity — zero Accessibility/Screen Recording permissions) & `IdleResolutionSheet` with all 4 Toggl actions (`Discard & continue`, `Discard`, `Keep`, `Add as new entry`).
+- Added `ReminderManager` workday weekday schedule notifications (`UNUserNotificationCenter`).
+- Added strictly opt-in `ActivityTrackerManager` (`NSWorkspace` >10s spans, zero keystrokes/screenshots, customizable bundle exclusions, keyword `AutotrackerRule` matching, and 1-click activity history purge).
+- Added `SystemIntegrationManager` (`showDockIcon` via `NSApp` guarded safely for CLI tests + `SMAppService.mainApp` Login Item toggle).
+- Reorganized `SettingsView` into 6 clean macOS tabs (`General`, `Timer`, `Pomodoro`, `Idle & Reminders`, `Activity`, `Data`).
+- Verified with `Tests/Phase5SystemIntegrationTests.swift` (3 tests).
 
-### Priority 3: Billable Tracking & Tags Flow (Completed)
-- **Part A (Billable Tracking)**:
-  - Connected and enhanced the `$` billable toggle in `ActiveTimerBar.swift` with real-time toggle reflection on active sessions and `project.isBillableDefault` auto-enablement.
-  - Ensured `TimerManager.start`, `continueEntry`, and `restoreActiveSession` accept, preserve, and retain `isBillable: Bool`.
-  - Added billable indicator `$` in `AppColors.billable` (`#36B37E`) to `TimeEntryRowView.swift`.
-  - Added billable checkbox toggle to `EntryEditSheet.swift` for both editing existing entries and manual logging.
-  - Integrated hourly rates across `Project` (`hourlyRate: Double?`) and `Client` (`hourlyRate: Double?`), calculating accurate billable amount in `ReportsView.swift` with project override -> client fallback -> $50/hr default rate.
-- **Part B (Tag Management)**:
-  - Created authentic `TagPickerPopover.swift` styled after Toggl Track with real-time tag search, inline `+ Create tag "..."` button, multi-selection checkmarks, and hover/context-menu delete.
-  - Connected 🏷️ button in `ActiveTimerBar.swift` with dynamic badge count and popover anchor.
-  - Added multi-tag selection and removable capsule chips to `EntryEditSheet.swift`.
-  - Rendered `#tag` badges in `TimeEntryRowView.swift`.
-  - Added tag-based filtering (`EntryFilter.tag(UUID)`) with Tags section in filter dropdown menu of `EntriesListView.swift`.
-  - Added `ReportDimension.tags` to `ReportsView.swift` for tag-level productivity distribution.
-- **Part C (Data Integrity & Cascade Safety)**:
-  - Implemented case-insensitive duplicate tag prevention.
-  - Verified `PersistenceStore.deleteTag(id:)` cleans up deleted tag IDs across historical time entries without data loss.
-  - Retained `retainedTagIds` and `retainedIsBillable` for chaining work.
-- **Part D (Automated Verification)**:
-  - Created `Tests/BillableAndTagsTests.swift` covering 8 dedicated test scenarios.
-  - Recompiled release binary and packaged into `TimeStamp.app`.
-
----
-
-### Priority 4: Goals Engine & Storage Integrity Repair (Toggl Parity)
-- **Status**: Completed & Verified
-- **Reference Analysis & Root Causes**:
-  - Eliminated the false 6h 20m tracked time on fresh installs: removed automatic sample goals seeding from `PersistenceStore.init(inMemory: false)` and resolved duplicate entries.
-  - Fixed duration doubling in `TimeEntry.effectiveDuration`: previously added `accumulatedDuration + (endDate - startDate)` which doubled stopped entries. Canonical duration is now strictly invariant across running, paused, stopped, and edited states.
-  - Created automated timestamped backups in `~/Library/Application Support/TimeStamp/backups/` and non-destructive clean state reset via `resetToCleanState(createBackup:)`.
-- **Goals Engine Architecture & Toggl Semantics**:
-  - `Goal.swift`: Added `GoalTargetType` (`.atLeast`, `.lessThan`), `GoalCadence` (`.daily`, `.weekdays`, `.weekly`), and multi-criteria filters (`projectId`, `clientId`, `taskId`, `tagIds`, `billableFilter`).
-  - **Weekday Semantics**: "Each weekday (Monday–Friday)" operates as an independent daily target evaluated for each individual weekday.
-  - **Client Hierarchy**: Strict adherence to Toggl hierarchy (Client -> Projects -> TimeEntries). Client-filtered goals match entries where `store.project(for: entry.projectId)?.clientId == goal.clientId`.
-  - **Live Preview in Editor**: `GoalEditorSheet.swift` includes an interactive Live Progress Preview card showing matching time in the active period before saving.
-  - **Visual Badges**: `GoalsCardView.swift` displays `OVER LIMIT` in destructive red `#FF453A`, `COMPLETED` in green `#36B37E`, and `KEEP GOING` in Toggl magenta `#E54583` with duplicate timer prevention.
-- **Project Picker Popover Polish**:
-  - Set popover width to `360` to accommodate long project and client names.
-  - Styled `+ Create project` footer with Toggl magenta `#E54583` text and icon.
-- **Verification**:
-  - `Tests/GoalsAndStorageRepairTests.swift`: 16 comprehensive automated tests covering clean installs, safe backups, at-least/less-than goals, project/client/tag/billable filters, weekday cadence, live timer updates, and anti-double-counting.
-  - Successfully built, signed, and packaged release binary into `TimeStamp.app`.
+### Phase 6 — Final QA, Packaging & Visual Inspection
+- Fixed two real release-runtime bugs caught on live launch: tolerant production `Goal` enum decoding (`At least`/`Daily`) and safe `NSApp != nil` guard in `SystemIntegrationManager.applyDockIconPolicy()`.
+- Fixed two visual layout bugs caught in PNG screenshot review: greedy `Color.clear` vertical expansion in `WeekTimelineGridView` weekday header and standalone window background fill in `PomodoroPopoverView`.
+- Verified **129 tests across 25 suites passing** in `./scripts/run-qa-tests.sh` (`0.081s`), `100.0 / 100` feature parity in `replica/features.csv` via `parity.py`, valid codesigned ARM64 release `TimeStamp.app`, and intact production DB (`36 timeEntries`, `1 goal`, `2 projects`, `4 clients`, `4 tags`, `1 task`).

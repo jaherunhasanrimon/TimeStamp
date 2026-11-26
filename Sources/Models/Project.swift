@@ -10,6 +10,7 @@ public final class Project: Identifiable, Codable, Equatable {
         lhs.isArchived == rhs.isArchived &&
         lhs.hourlyRate == rhs.hourlyRate &&
         lhs.isBillableDefault == rhs.isBillableDefault &&
+        lhs.estimatedHours == rhs.estimatedHours &&
         lhs.createdAt == rhs.createdAt &&
         lhs.clientId == rhs.clientId
     }
@@ -20,6 +21,7 @@ public final class Project: Identifiable, Codable, Equatable {
     public var isArchived: Bool
     public var hourlyRate: Double?
     public var isBillableDefault: Bool
+    public var estimatedHours: Double?
     public var createdAt: Date
     public var clientId: UUID?
 
@@ -30,6 +32,7 @@ public final class Project: Identifiable, Codable, Equatable {
         isArchived: Bool = false,
         hourlyRate: Double? = nil,
         isBillableDefault: Bool = false,
+        estimatedHours: Double? = nil,
         createdAt: Date = Date(),
         clientId: UUID? = nil
     ) {
@@ -39,6 +42,7 @@ public final class Project: Identifiable, Codable, Equatable {
         self.isArchived = isArchived
         self.hourlyRate = hourlyRate
         self.isBillableDefault = isBillableDefault
+        self.estimatedHours = estimatedHours
         self.createdAt = createdAt
         self.clientId = clientId
     }
@@ -50,6 +54,7 @@ public final class Project: Identifiable, Codable, Equatable {
         case isArchived
         case hourlyRate
         case isBillableDefault
+        case estimatedHours
         case createdAt
         case clientId
     }
@@ -62,6 +67,7 @@ public final class Project: Identifiable, Codable, Equatable {
         self.isArchived = try container.decode(Bool.self, forKey: .isArchived)
         self.hourlyRate = try container.decodeIfPresent(Double.self, forKey: .hourlyRate)
         self.isBillableDefault = try container.decodeIfPresent(Bool.self, forKey: .isBillableDefault) ?? false
+        self.estimatedHours = try container.decodeIfPresent(Double.self, forKey: .estimatedHours)
         self.createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
         self.clientId = try container.decodeIfPresent(UUID.self, forKey: .clientId)
     }
@@ -74,6 +80,7 @@ public final class Project: Identifiable, Codable, Equatable {
         try container.encode(isArchived, forKey: .isArchived)
         try container.encode(hourlyRate, forKey: .hourlyRate)
         try container.encode(isBillableDefault, forKey: .isBillableDefault)
+        try container.encode(estimatedHours, forKey: .estimatedHours)
         try container.encode(createdAt, forKey: .createdAt)
         try container.encode(clientId, forKey: .clientId)
     }

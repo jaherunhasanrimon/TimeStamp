@@ -13,6 +13,8 @@ public struct ClientEditorSheet: View {
 
     @State private var name: String = ""
     @State private var notes: String = ""
+    @State private var hourlyRateText: String = ""
+    @State private var currency: String = "$"
     @State private var selectedProjectIds: Set<UUID> = []
 
     public init(mode: Mode = .create) {
@@ -67,6 +69,33 @@ public struct ClientEditorSheet: View {
                         .lineLimit(3...5)
                         .textFieldStyle(.roundedBorder)
                         .font(AppTypography.body)
+                }
+
+                // Billing Defaults
+                HStack(spacing: AppSpacing.md) {
+                    VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                        Text("Currency")
+                            .font(AppTypography.label)
+                            .foregroundStyle(.secondary)
+
+                        Picker("Currency", selection: $currency) {
+                            ForEach(["$", "€", "£", "¥", "৳", "CAD", "AUD"], id: \.self) { symbol in
+                                Text(symbol).tag(symbol)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: 90)
+                    }
+
+                    VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                        Text("Default Hourly Rate (Optional)")
+                            .font(AppTypography.label)
+                            .foregroundStyle(.secondary)
+
+                        TextField("e.g. 85", text: $hourlyRateText)
+                            .textFieldStyle(.roundedBorder)
+                            .font(AppTypography.body)
+                    }
                 }
 
                 // Assigned Projects Checklist
@@ -151,6 +180,10 @@ public struct ClientEditorSheet: View {
             if let client = targetClient {
                 self.name = client.name
                 self.notes = client.notes ?? ""
+                self.currency = client.currency
+                if let rate = client.hourlyRate, rate > 0 {
+                    self.hourlyRateText = rate.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(rate))" : String(format: "%.2f", rate)
+                }
                 let associated = store.projects.filter { $0.clientId == client.id }.map { $0.id }
                 self.selectedProjectIds = Set(associated)
             }
@@ -163,15 +196,24 @@ public struct ClientEditorSheet: View {
 
         let trimmedNotes = notes.trimmingCharacters(in: .whitespaces)
         let resolvedNotes = trimmedNotes.isEmpty ? nil : trimmedNotes
+        let parsedRate = Double(hourlyRateText.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: "."))
+        let resolvedRate = (parsedRate ?? 0) > 0 ? parsedRate : nil
 
         let clientToSave: Client
         if let existing = targetClient {
             existing.name = trimmedName
             existing.notes = resolvedNotes
+            existing.hourlyRate = resolvedRate
+            existing.currency = currency
             store.saveClient(existing)
             clientToSave = existing
         } else {
-            let newClient = Client(name: trimmedName, notes: resolvedNotes)
+            let newClient = Client(
+                name: trimmedName,
+                notes: resolvedNotes,
+                hourlyRate: resolvedRate,
+                currency: currency
+            )
             store.saveClient(newClient)
             clientToSave = newClient
         }

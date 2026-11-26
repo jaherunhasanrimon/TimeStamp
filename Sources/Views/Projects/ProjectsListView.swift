@@ -14,6 +14,7 @@ public struct ProjectsListView: View {
 
     @State private var searchText: String = ""
     @State private var selectedSegment: SegmentFilter = .active
+    @State private var selectedClientFilterId: UUID? = nil
     @State private var isCreateSheetPresented: Bool = false
     @State private var projectToEdit: Project? = nil
     @State private var projectToDelete: Project? = nil
@@ -25,7 +26,13 @@ public struct ProjectsListView: View {
 
     private var filteredProjects: [Project] {
         let isArchivedTarget = (selectedSegment == .archived)
-        let segmentMatched = store.projects.filter { $0.isArchived == isArchivedTarget }
+        let segmentMatched = store.projects.filter { project in
+            guard project.isArchived == isArchivedTarget else { return false }
+            if let clientFilter = selectedClientFilterId {
+                return project.clientId == clientFilter
+            }
+            return true
+        }
 
         let query = searchText.trimmingCharacters(in: .whitespaces).lowercased()
         guard !query.isEmpty else {
@@ -89,6 +96,43 @@ public struct ProjectsListView: View {
                 .frame(width: 180)
                 .background(Color.secondary.opacity(0.08))
                 .clipShape(RoundedRectangle(cornerRadius: AppSpacing.radiusSmall))
+
+                // Client Filter
+                Menu {
+                    Button("All Clients") {
+                        selectedClientFilterId = nil
+                    }
+                    if !store.clients.isEmpty {
+                        Divider()
+                        ForEach(store.clients) { client in
+                            Button {
+                                selectedClientFilterId = client.id
+                            } label: {
+                                if selectedClientFilterId == client.id {
+                                    Label(client.name, systemImage: "checkmark")
+                                } else {
+                                    Text(client.name)
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    let selectedClientName = selectedClientFilterId.flatMap { store.client(for: $0)?.name } ?? "All Clients"
+                    HStack(spacing: 4) {
+                        Image(systemName: "person.2")
+                            .font(.system(size: 11))
+                        Text(selectedClientName)
+                            .font(AppTypography.caption)
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(selectedClientFilterId != nil ? AppColors.togglMagenta.opacity(0.14) : Color.secondary.opacity(0.08))
+                    .foregroundStyle(selectedClientFilterId != nil ? AppColors.togglMagenta : Color.primary)
+                    .clipShape(RoundedRectangle(cornerRadius: AppSpacing.radiusSmall))
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
 
                 // Segmented Picker [Active | Archived] (D-04)
                 Picker("", selection: $selectedSegment) {

@@ -22,20 +22,28 @@ public struct CompactTrackerView: View {
     private var todayTotalDuration: TimeInterval {
         let calendar = Calendar.current
         let today = Date()
-        let todayEntries = store.timeEntries.filter { calendar.isDate($0.startDate, inSameDayAs: today) }
-        let completedSum = todayEntries.reduce(0.0) { $0 + $1.effectiveDuration }
-        let activeDuration = timerManager.isRunning ? timerManager.currentDuration : 0.0
+        let completedSum = store.timeEntries
+            .filter { $0.endDate != nil && calendar.isDate($0.startDate, inSameDayAs: today) }
+            .reduce(0.0) { $0 + $1.effectiveDuration }
+        let activeDuration: TimeInterval = {
+            guard let active = timerManager.activeEntry,
+                  calendar.isDate(active.startDate, inSameDayAs: today) else {
+                return 0.0
+            }
+            return timerManager.currentDuration
+        }()
         return completedSum + activeDuration
     }
 
     private var formattedTodayTotal: String {
-        TimeCalculator.formatDuration(todayTotalDuration)
+        TimeCalculator.formatCompactDuration(todayTotalDuration)
     }
 
     public var body: some View {
         VStack(spacing: 0) {
-            // 1. Top Active Timer Bar
+            // 1. Top Active Timer Bar (elevated zIndex so autocomplete floats above body)
             ActiveTimerBar()
+                .zIndex(50)
 
             // 2. Capsule View Switcher [ List | Calendar ]
             CapsuleViewSwitcher(selectedMode: $selectedMode)
@@ -78,7 +86,7 @@ public struct CompactTrackerView: View {
 
                     // Mode Content
                     if selectedMode == .list {
-                        EntriesListView(filter: $entryFilter)
+                        EntriesListView(filter: $entryFilter, isCompact: true)
                     } else {
                         CalendarTimelineView()
                     }

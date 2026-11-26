@@ -1,167 +1,243 @@
 import SwiftUI
 
 public struct CalendarBlockView: View {
-    @Environment(PersistenceStore.self) private var store
-    @Environment(TimerManager.self) private var timerManager
+    public let entry: TimeEntry
+    public let project: Project?
+    public let height: CGFloat
+    public let isCompact: Bool
+    public let onSelect: () -> Void
+    public var onMoveDeltaY: ((CGFloat) -> Void)? = nil
+    public var onResizeEdgeDeltaY: ((ResizeEdge, CGFloat) -> Void)? = nil
+    public var onContinue: (() -> Void)? = nil
+    public var onDuplicate: (() -> Void)? = nil
+    public var onToggleBillable: (() -> Void)? = nil
+    public var onDelete: (() -> Void)? = nil
 
-    public let positionedBlock: PositionedBlock
-    public let columnWidth: CGFloat
-    public let hourHeight: CGFloat
-
-    @State private var isPopoverPresented = false
-    @State private var isEditSheetPresented = false
-    @State private var isHovered = false
+    @State private var isHovered: Bool = false
+    @State private var dragMoveOffsetY: CGFloat = 0
+    @State private var dragTopDeltaY: CGFloat = 0
+    @State private var dragBottomDeltaY: CGFloat = 0
 
     public init(
-        positionedBlock: PositionedBlock,
-        columnWidth: CGFloat,
-        hourHeight: CGFloat = 60.0
+        entry: TimeEntry,
+        project: Project?,
+        height: CGFloat,
+        isCompact: Bool = false,
+        onSelect: @escaping () -> Void,
+        onMoveDeltaY: ((CGFloat) -> Void)? = nil,
+        onResizeEdgeDeltaY: ((ResizeEdge, CGFloat) -> Void)? = nil,
+        onContinue: (() -> Void)? = nil,
+        onDuplicate: (() -> Void)? = nil,
+        onToggleBillable: (() -> Void)? = nil,
+        onDelete: (() -> Void)? = nil
     ) {
-        self.positionedBlock = positionedBlock
-        self.columnWidth = columnWidth
-        self.hourHeight = hourHeight
+        self.entry = entry
+        self.project = project
+        self.height = height
+        self.isCompact = isCompact
+        self.onSelect = onSelect
+        self.onMoveDeltaY = onMoveDeltaY
+        self.onResizeEdgeDeltaY = onResizeEdgeDeltaY
+        self.onContinue = onContinue
+        self.onDuplicate = onDuplicate
+        self.onToggleBillable = onToggleBillable
+        self.onDelete = onDelete
     }
 
-    private var project: Project? {
-        positionedBlock.entry.projectId.flatMap { store.project(for: $0) }
+    private var accentColor: Color {
+        if let hex = project?.colorHex {
+            return Color(hex: hex)
+        }
+        return AppColors.brandAccent
     }
 
-    private var task: Task? {
-        positionedBlock.entry.taskId.flatMap { store.task(for: $0) }
+    private var isLiveRunning: Bool {
+        entry.endDate == nil
     }
 
-    private var projectColor: Color {
-        project.map { Color(hex: $0.colorHex) } ?? AppColors.brandAccent
+    private var renderedHeight: CGFloat {
+        max(22, height + dragBottomDeltaY - dragTopDeltaY)
     }
 
     public var body: some View {
-        let yOffset = CGFloat(positionedBlock.startMinutes) * (hourHeight / 60.0)
-        let blockHeight = max(24.0, CGFloat(positionedBlock.durationMinutes) * (hourHeight / 60.0))
-        let availableWidth = max(20.0, columnWidth - 4.0)
-        let subColWidth = availableWidth / CGFloat(max(1, positionedBlock.totalSubColumns))
-        let xOffset = 2.0 + CGFloat(positionedBlock.subColumnIndex) * subColWidth
-        let width = max(18.0, subColWidth - 2.0)
+        ZStack(alignment: .topLeading) {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    if isLiveRunning {
+                        Circle()
+                            .fill(AppColors.togglMagenta)
+                            .frame(width: 6, height: 6)
+                    } else {
+                        Circle()
+                            .fill(accentColor)
+                            .frame(width: 6, height: 6)
+                    }
 
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: AppSpacing.xs) {
-                Text(positionedBlock.entry.entryDescription.isEmpty ? "(No description)" : positionedBlock.entry.entryDescription)
-                    .font(AppTypography.caption)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.white)
-                    .lineLimit(blockHeight > 40 ? 2 : 1)
+                    Text(entry.entryDescription.isEmpty ? "(No description)" : entry.entryDescription)
+                        .font(.system(size: isCompact ? 10 : 12, weight: .semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
 
-                Spacer()
-            }
+                    Spacer(minLength: 2)
 
-            if blockHeight > 36 {
-                Text(DateHelper.formatTimeRange(start: positionedBlock.entry.startDate, end: positionedBlock.entry.endDate))
-                    .font(.system(size: 10, weight: .regular).monospacedDigit())
-                    .foregroundStyle(.white.opacity(0.85))
-                    .lineLimit(1)
-            }
-        }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 4)
-        .frame(width: width, height: blockHeight, alignment: .topLeading)
-        .background(
-            RoundedRectangle(cornerRadius: AppSpacing.radiusSmall)
-                .fill(projectColor.opacity(0.88))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: AppSpacing.radiusSmall)
-                .stroke(projectColor, lineWidth: 1.2)
-        )
-        .shadow(color: isHovered ? Color.black.opacity(0.18) : Color.clear, radius: 4, x: 0, y: 2)
-        .position(x: xOffset + width / 2.0, y: yOffset + blockHeight / 2.0)
-        .onHover { isHovered = $0 }
-        .onTapGesture {
-            isPopoverPresented = true
-        }
-        .popover(isPresented: $isPopoverPresented) {
-            popoverInspector()
-        }
-        .sheet(isPresented: $isEditSheetPresented) {
-            EntryEditSheet(mode: .edit(positionedBlock.entry))
-        }
-    }
+                    if entry.isBillable {
+                        Text("$")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(AppColors.billable)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(AppColors.billable.opacity(0.15))
+                            .clipShape(RoundedRectangle(cornerRadius: 3))
+                    }
 
-    @ViewBuilder
-    private func popoverInspector() -> some View {
-        VStack(alignment: .leading, spacing: AppSpacing.md) {
-            // Header: Project & Task
-            HStack(spacing: AppSpacing.sm) {
-                Circle()
-                    .fill(projectColor)
-                    .frame(width: 10, height: 10)
-
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(project?.name ?? "No Project")
-                        .font(AppTypography.subheading)
-
-                    if let task = task {
-                        Text(task.name)
-                            .font(AppTypography.caption)
+                    if height >= 28 && !isCompact {
+                        Text(TimeCalculator.formatCompactDuration(entry.effectiveDuration))
+                            .font(.system(size: 10, design: .monospaced))
                             .foregroundStyle(.secondary)
                     }
                 }
 
-                Spacer()
+                if renderedHeight >= 40 {
+                    HStack(spacing: 4) {
+                        if let project {
+                            Text(project.name)
+                                .font(.system(size: isCompact ? 9 : 11))
+                                .foregroundStyle(accentColor)
+                                .lineLimit(1)
+                        }
 
-                Text(DateHelper.formatHumanDuration(positionedBlock.entry.effectiveDuration))
-                    .font(AppTypography.ticker)
-                    .padding(.horizontal, AppSpacing.sm)
-                    .padding(.vertical, 2)
-                    .background(projectColor.opacity(0.15))
-                    .clipShape(Capsule())
-            }
-
-            Divider()
-
-            // Description
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Description")
-                    .font(AppTypography.caption)
-                    .foregroundStyle(.secondary)
-                Text(positionedBlock.entry.entryDescription.isEmpty ? "(No description)" : positionedBlock.entry.entryDescription)
-                    .font(AppTypography.body)
-            }
-
-            // Time range
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Time Range")
-                    .font(AppTypography.caption)
-                    .foregroundStyle(.secondary)
-                Text(DateHelper.formatTimeRange(start: positionedBlock.entry.startDate, end: positionedBlock.entry.endDate))
-                    .font(AppTypography.caption)
-            }
-
-            Divider()
-
-            // Actions: Continue & Edit
-            HStack(spacing: AppSpacing.md) {
-                Button(action: {
-                    timerManager.continueEntry(positionedBlock.entry)
-                    isPopoverPresented = false
-                }) {
-                    Label("Continue", systemImage: "play.fill")
-                        .font(AppTypography.label)
+                        if !isCompact {
+                            Text("· \(DateHelper.formatTimeRange(start: entry.startDate, end: entry.endDate))")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(AppColors.brandAccent)
+            }
+            .padding(.horizontal, isCompact ? 5 : 8)
+            .padding(.vertical, 4)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
-                Spacer()
+            // Top resize handle
+            if !isLiveRunning && onResizeEdgeDeltaY != nil && renderedHeight >= 26 {
+                Rectangle()
+                    .fill(isHovered ? accentColor.opacity(0.6) : Color.clear)
+                    .frame(height: 5)
+                    .frame(maxWidth: .infinity)
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 2)
+                            .onChanged { value in
+                                dragTopDeltaY = value.translation.height
+                            }
+                            .onEnded { value in
+                                onResizeEdgeDeltaY?(.top, value.translation.height)
+                                dragTopDeltaY = 0
+                            }
+                    )
+            }
 
-                Button(action: {
-                    isPopoverPresented = false
-                    isEditSheetPresented = true
-                }) {
-                    Label("Edit Details...", systemImage: "pencil")
-                        .font(AppTypography.label)
+            // Bottom resize handle
+            if !isLiveRunning && onResizeEdgeDeltaY != nil {
+                VStack {
+                    Spacer()
+                    Rectangle()
+                        .fill(isHovered ? accentColor.opacity(0.6) : Color.clear)
+                        .frame(height: 6)
+                        .frame(maxWidth: .infinity)
+                        .contentShape(Rectangle())
+                        .gesture(
+                            DragGesture(minimumDistance: 2)
+                                .onChanged { value in
+                                    dragBottomDeltaY = value.translation.height
+                                }
+                                .onEnded { value in
+                                    onResizeEdgeDeltaY?(.bottom, value.translation.height)
+                                    dragBottomDeltaY = 0
+                                }
+                        )
                 }
-                .buttonStyle(.bordered)
             }
         }
-        .padding(AppSpacing.md)
-        .frame(width: 280)
+        .frame(maxWidth: .infinity)
+        .frame(height: renderedHeight)
+        .background(accentColor.opacity(isHovered ? 0.25 : 0.16))
+        .overlay(
+            HStack(spacing: 0) {
+                Rectangle()
+                    .fill(isLiveRunning ? AppColors.togglMagenta : accentColor)
+                    .frame(width: 4)
+                Spacer()
+            }
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(isHovered || isLiveRunning ? accentColor.opacity(0.75) : accentColor.opacity(0.32), lineWidth: 1)
+        )
+        .offset(y: dragMoveOffsetY + dragTopDeltaY)
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            isHovered = hovering
+        }
+        .onTapGesture {
+            onSelect()
+        }
+        .gesture(
+            DragGesture(minimumDistance: 6)
+                .onChanged { value in
+                    guard !isLiveRunning, onMoveDeltaY != nil else { return }
+                    dragMoveOffsetY = value.translation.height
+                }
+                .onEnded { value in
+                    guard !isLiveRunning, let onMove = onMoveDeltaY else {
+                        dragMoveOffsetY = 0
+                        return
+                    }
+                    onMove(value.translation.height)
+                    dragMoveOffsetY = 0
+                }
+        )
+        .contextMenu {
+            if let onContinue {
+                Button {
+                    onContinue()
+                } label: {
+                    Label("Continue Tracking", systemImage: "play.fill")
+                }
+            }
+
+            if let onDuplicate {
+                Button {
+                    onDuplicate()
+                } label: {
+                    Label("Duplicate Entry", systemImage: "plus.square.on.square")
+                }
+            }
+
+            Button {
+                onSelect()
+            } label: {
+                Label("Edit Details...", systemImage: "pencil")
+            }
+
+            if let onToggleBillable {
+                Button {
+                    onToggleBillable()
+                } label: {
+                    Label(entry.isBillable ? "Mark Non-billable" : "Mark Billable ($)", systemImage: "dollarsign.circle")
+                }
+            }
+
+            if let onDelete {
+                Divider()
+                Button(role: .destructive) {
+                    onDelete()
+                } label: {
+                    Label("Delete Entry", systemImage: "trash")
+                }
+            }
+        }
     }
 }

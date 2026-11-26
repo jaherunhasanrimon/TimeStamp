@@ -22,7 +22,7 @@ public struct GoalsCardView: View {
             let prog = store.progress(
                 for: goal,
                 activeEntry: timerManager.activeEntry,
-                activeDuration: timerManager.isRunning ? timerManager.currentDuration : 0
+                activeDuration: timerManager.activeEntry != nil ? timerManager.currentDuration : 0
             )
             return prog.isCompleted
         }.count
@@ -32,7 +32,7 @@ public struct GoalsCardView: View {
         VStack(spacing: 0) {
             // Header: Goals (completed/total) with + and ^ chevron
             HStack {
-                Text("Goals (\(completedGoalsCount)/\(max(1, store.goals.count)))")
+                Text(store.goals.isEmpty ? "Goals" : "Goals (\(completedGoalsCount)/\(store.goals.count))")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(Color.primary)
 
@@ -112,7 +112,7 @@ public struct GoalsCardView: View {
 
     @ViewBuilder
     private func goalRow(goal: Goal) -> some View {
-        let activeDuration = timerManager.isRunning ? timerManager.currentDuration : 0
+        let activeDuration = timerManager.activeEntry != nil ? timerManager.currentDuration : 0
         let progress = store.progress(
             for: goal,
             activeEntry: timerManager.activeEntry,
@@ -215,11 +215,11 @@ public struct GoalsCardView: View {
                                 Text("KEEP GOING")
                             }
                         }
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(isMatchingTimerActive ? AppColors.togglMagenta : Color.primary.opacity(0.85))
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 4)
-                        .background(isMatchingTimerActive ? AppColors.togglMagenta.opacity(0.15) : AppColors.secondaryCardBackground)
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(isMatchingTimerActive ? AppColors.togglMagenta : Color.primary.opacity(0.9))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(isMatchingTimerActive ? AppColors.togglMagenta.opacity(0.14) : Color.clear)
                         .clipShape(RoundedRectangle(cornerRadius: 4))
                     }
                     .buttonStyle(.plain)
@@ -275,6 +275,7 @@ public struct GoalsCardView: View {
         return store.entryMatchesGoal(
             entry: active,
             projectId: goal.projectId,
+            projectIds: goal.effectiveProjectIds,
             clientId: goal.clientId,
             taskId: goal.taskId,
             tagIds: goal.tagIds,
@@ -287,6 +288,7 @@ public struct GoalsCardView: View {
             let matches = store.entryMatchesGoal(
                 entry: active,
                 projectId: goal.projectId,
+                projectIds: goal.effectiveProjectIds,
                 clientId: goal.clientId,
                 taskId: goal.taskId,
                 tagIds: goal.tagIds,
@@ -309,7 +311,7 @@ public struct GoalsCardView: View {
         // Start new timer associated with this goal
         timerManager.start(
             description: goal.title,
-            projectId: goal.projectId,
+            projectId: goal.effectiveProjectIds.first,
             taskId: goal.taskId,
             tagIds: goal.tagIds,
             isBillable: (goal.billableFilter == .billableOnly)

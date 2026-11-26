@@ -1,343 +1,432 @@
 import SwiftUI
 
-public enum DateRangePreset: String, CaseIterable, Identifiable {
-    case today = "Today"
-    case thisWeek = "This Week"
-    case thisMonth = "This Month"
-    case custom = "Custom Range"
-
-    public var id: String { rawValue }
-}
-
-public enum ReportDimension: String, CaseIterable, Identifiable {
-    case projects = "By Project"
-    case clients = "By Client"
-    case tags = "By Tag"
-
-    public var id: String { rawValue }
-}
-
 public struct ReportsView: View {
-    @Environment(PersistenceStore.self) private var store
+    public enum ReportTab: String, CaseIterable, Identifiable {
+        case summary = "Summary"
+        case detailed = "Detailed"
+        case weekly = "Weekly"
 
-    @State private var selectedRange: DateRangePreset = .thisWeek
-    @State private var customStartDate: Date = Date()
+        public var id: String { rawValue }
+    }
+
+    public enum DateRangePreset: String, CaseIterable, Identifiable {
+        case today = "Today"
+        case yesterday = "Yesterday"
+        case thisWeek = "This Week"
+        case lastWeek = "Last Week"
+        case thisMonth = "This Month"
+        case lastMonth = "Last Month"
+        case custom = "Custom Range"
+
+        public var id: String { rawValue }
+    }
+
+    public enum BillableFilter: String, CaseIterable, Identifiable {
+        case all = "All entries"
+        case billableOnly = "Billable only"
+        case nonBillableOnly = "Non-billable only"
+
+        public var id: String { rawValue }
+    }
+
+    @Environment(PersistenceStore.self) private var store
+    @AppStorage("defaultHourlyRate") private var defaultHourlyRate: Double = 0.0
+
+    @State private var selectedTab: ReportTab = .summary
+    @State private var selectedPreset: DateRangePreset = .thisWeek
+    @State private var customStartDate: Date = DateHelper.startOfWeek(for: Date())
     @State private var customEndDate: Date = Date()
-    @State private var selectedDimension: ReportDimension = .projects
+
+    @State private var selectedClientId: UUID? = nil
+    @State private var selectedProjectId: UUID? = nil
+    @State private var selectedTagId: UUID? = nil
+    @State private var billableFilter: BillableFilter = .all
+    @State private var searchQuery: String = ""
 
     public init() {}
 
-    private var resolvedDateInterval: (start: Date, end: Date) {
-        let calendar = Calendar.current
+    private var resolvedDateRange: (start: Date, end: Date) {
+        let cal = Calendar.current
         let now = Date()
+        let todayStart = cal.startOfDay(for: now)
 
-        switch selectedRange {
+        switch selectedPreset {
         case .today:
-            let start = calendar.startOfDay(for: now)
-            let end = calendar.date(byAdding: .day, value: 1, to: start)!
-            return (start, end)
-
+            return (todayStart, now)
+        case .yesterday:
+            let yStart = cal.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
+            let yEnd = todayStart.addingTimeInterval(-1)
+            return (yStart, yEnd)
         case .thisWeek:
-            var cal = calendar
-            cal.firstWeekday = 2 // Monday start
-            let components = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)
-            let start = cal.date(from: components) ?? cal.startOfDay(for: now)
-            let end = cal.date(byAdding: .day, value: 7, to: start)!
-            return (start, end)
-
+            let wStart = DateHelper.startOfWeek(for: now)
+            let wEnd = cal.date(byAdding: .day, value: 7, to: wStart)?.addingTimeInterval(-1) ?? now
+            return (wStart, wEnd)
+        case .lastWeek:
+            let thisW = DateHelper.startOfWeek(for: now)
+            let lastWStart = cal.date(byAdding: .day, value: -7, to: thisW) ?? thisW
+            let lastWEnd = thisW.addingTimeInterval(-1)
+            return (lastWStart, lastWEnd)
         case .thisMonth:
-            let components = calendar.dateComponents([.year, .month], from: now)
-            let start = calendar.date(from: components) ?? calendar.startOfDay(for: now)
-            let end = calendar.date(byAdding: .month, value: 1, to: start)!
-            return (start, end)
-
+            let comps = cal.dateComponents([.year, .month], from: now)
+            let mStart = cal.date(from: comps) ?? todayStart
+            let mEnd = cal.date(byAdding: .month, value: 1, to: mStart)?.addingTimeInterval(-1) ?? now
+            return (mStart, mEnd)
+        case .lastMonth:
+            let comps = cal.dateComponents([.year, .month], from: now)
+            let thisM = cal.date(from: comps) ?? todayStart
+            let lastMStart = cal.date(byAdding: .month, value: -1, to: thisM) ?? thisM
+            let lastMEnd = thisM.addingTimeInterval(-1)
+            return (lastMStart, lastMEnd)
         case .custom:
-            let start = calendar.startOfDay(for: customStartDate)
-            let rawEnd = calendar.startOfDay(for: customEndDate)
-            let end = calendar.date(byAdding: .day, value: 1, to: rawEnd)!
-            return (start, end)
+            let start = cal.startOfDay(for: customStartDate)
+            let end = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: customEndDate))?.addingTimeInterval(-1) ?? customEndDate
+            return (start, max(start, end))
         }
+    }
+
+    private var periodDisplayLabel: String {
+        let range = resolvedDateRange
+        let df = DateFormatter()
+        df.dateStyle = .medium
+        return "\(df.string(from: range.start)) – \(df.string(from: range.end))"
     }
 
     private var filteredEntries: [TimeEntry] {
-        let interval = resolvedDateInterval
-        return store.timeEntries.filter {
-            $0.startDate >= interval.start && $0.startDate < interval.end && $0.endDate != nil
-        }
-    }
+        let range = resolvedDateRange
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 
-    private var totalDuration: TimeInterval {
-        filteredEntries.reduce(0.0) { $0 + $1.effectiveDuration }
-    }
+        return store.timeEntries.filter { entry in
+            guard entry.endDate != nil else { return false }
+            guard entry.startDate >= range.start && entry.startDate <= range.end else { return false }
 
-    private var breakdownItems: [BreakdownItem] {
-        let total = totalDuration
-        guard total > 0 else { return [] }
-
-        switch selectedDimension {
-        case .projects:
-            let grouped = Dictionary(grouping: filteredEntries) { $0.projectId }
-            return grouped.map { projId, entries in
-                let duration = entries.reduce(0.0) { $0 + $1.effectiveDuration }
-                let percent = (duration / total) * 100.0
-                let project = projId.flatMap { store.project(for: $0) }
-                let name = project?.name ?? "No Project"
-                let colorHex = project?.colorHex ?? "#8E8E93"
-
-                return BreakdownItem(
-                    id: projId ?? UUID(),
-                    name: name,
-                    colorHex: colorHex,
-                    duration: duration,
-                    percentage: percent
-                )
+            if let projFilter = selectedProjectId, entry.projectId != projFilter {
+                return false
             }
-            .sorted { $0.duration > $1.duration }
 
-        case .clients:
-            // Map entries to client via their project
-            var clientDurations: [UUID?: (name: String, colorHex: String, duration: TimeInterval)] = [:]
-
-            for entry in filteredEntries {
-                let duration = entry.effectiveDuration
-                let project = entry.projectId.flatMap { store.project(for: $0) }
-                let client = project?.clientId.flatMap { store.client(for: $0) }
-
-                let clientId = client?.id
-                let clientName = client?.name ?? (project != nil ? "No Client" : "Unassigned")
-                let colorHex = project?.colorHex ?? "#8E8E93"
-
-                if let current = clientDurations[clientId] {
-                    clientDurations[clientId] = (current.name, current.colorHex, current.duration + duration)
-                } else {
-                    clientDurations[clientId] = (clientName, colorHex, duration)
+            if let clientFilter = selectedClientId {
+                guard let pId = entry.projectId,
+                      let project = store.project(for: pId),
+                      project.clientId == clientFilter else {
+                    return false
                 }
             }
 
-            return clientDurations.map { clientId, data in
-                let percent = (data.duration / total) * 100.0
-                return BreakdownItem(
-                    id: clientId ?? UUID(),
-                    name: data.name,
-                    colorHex: data.colorHex,
-                    duration: data.duration,
-                    percentage: percent
-                )
+            if let tagFilter = selectedTagId, !entry.tagIds.contains(tagFilter) {
+                return false
             }
-            .sorted { $0.duration > $1.duration }
 
-        case .tags:
-            var tagDurations: [UUID?: (name: String, colorHex: String, duration: TimeInterval)] = [:]
-            for entry in filteredEntries {
-                let duration = entry.effectiveDuration
-                if entry.tagIds.isEmpty {
-                    if let cur = tagDurations[nil] {
-                        tagDurations[nil] = (cur.name, cur.colorHex, cur.duration + duration)
-                    } else {
-                        tagDurations[nil] = ("No Tag", "#8E8E93", duration)
-                    }
-                } else {
-                    for tagId in entry.tagIds {
-                        let tag = store.tags.first(where: { $0.id == tagId })
-                        let name = tag?.name ?? "Unknown Tag"
-                        let colorHex = tag?.colorHex ?? "#E54583"
-                        if let cur = tagDurations[tagId] {
-                            tagDurations[tagId] = (cur.name, cur.colorHex, cur.duration + duration)
-                        } else {
-                            tagDurations[tagId] = ("#\(name)", colorHex, duration)
-                        }
-                    }
-                }
+            switch billableFilter {
+            case .all: break
+            case .billableOnly: guard entry.isBillable else { return false }
+            case .nonBillableOnly: guard !entry.isBillable else { return false }
             }
-            return tagDurations.map { tagId, data in
-                let percent = (data.duration / total) * 100.0
-                return BreakdownItem(
-                    id: tagId ?? UUID(),
-                    name: data.name,
-                    colorHex: data.colorHex,
-                    duration: data.duration,
-                    percentage: percent
-                )
+
+            if !query.isEmpty {
+                let descMatch = entry.entryDescription.lowercased().contains(query)
+                let projMatch = entry.projectId.flatMap { store.project(for: $0)?.name.lowercased().contains(query) } ?? false
+                if !descMatch && !projMatch { return false }
             }
-            .sorted { $0.duration > $1.duration }
+
+            return true
         }
+    }
+
+    private var totalTrackedDuration: TimeInterval {
+        filteredEntries.reduce(0) { $0 + $1.effectiveDuration }
     }
 
     private var billableDuration: TimeInterval {
-        filteredEntries.filter { $0.isBillable }.reduce(0.0) { $0 + $1.effectiveDuration }
+        filteredEntries.filter(\.isBillable).reduce(0) { $0 + $1.effectiveDuration }
     }
 
-    private var billableAmount: Double {
-        filteredEntries.reduce(0.0) { sum, entry in
-            guard entry.isBillable else { return sum }
-            let rate = entry.projectId.flatMap { store.project(for: $0)?.hourlyRate }
-                ?? entry.projectId.flatMap { store.project(for: $0)?.clientId }.flatMap { store.client(for: $0)?.hourlyRate }
-                ?? 50.0
+    private var billablePercentage: Int {
+        guard totalTrackedDuration > 0 else { return 0 }
+        return Int(round((billableDuration / totalTrackedDuration) * 100.0))
+    }
+
+    private var totalBillableEarnings: Double {
+        filteredEntries.filter(\.isBillable).reduce(0.0) { sum, entry in
+            let proj = entry.projectId.flatMap { store.project(for: $0) }
+            let client = proj?.clientId.flatMap { store.client(for: $0) }
+            let rate = proj?.hourlyRate ?? client?.hourlyRate ?? defaultHourlyRate
             return sum + (entry.effectiveDuration / 3600.0) * rate
         }
     }
 
-    private var dailyAverage: TimeInterval {
-        let interval = resolvedDateInterval
-        let days = max(1, Calendar.current.dateComponents([.day], from: interval.start, to: interval.end).day ?? 1)
-        return totalDuration / Double(days)
+    private var primaryCurrencySymbol: String {
+        for entry in filteredEntries where entry.isBillable {
+            if let pId = entry.projectId,
+               let cId = store.project(for: pId)?.clientId,
+               let sym = store.client(for: cId)?.currency {
+                return sym
+            }
+        }
+        return "$"
     }
 
-    private var topEntityName: String {
-        breakdownItems.first?.name ?? "None"
+    private var projectBreakdown: [BreakdownItem] {
+        let total = totalTrackedDuration
+        guard total > 0 else { return [] }
+
+        var byProject: [UUID?: TimeInterval] = [:]
+        for entry in filteredEntries {
+            byProject[entry.projectId, default: 0] += entry.effectiveDuration
+        }
+
+        return byProject.map { projId, duration in
+            let proj = projId.flatMap { store.project(for: $0) }
+            return BreakdownItem(
+                id: projId ?? UUID(uuidString: "00000000-0000-0000-0000-000000000000")!,
+                name: proj?.name ?? "No Project",
+                colorHex: proj?.colorHex ?? "#8E8E93",
+                duration: duration,
+                percentage: (duration / total) * 100.0
+            )
+        }
+        .sorted { $0.duration > $1.duration }
     }
 
     public var body: some View {
-        ScrollView(.vertical) {
-            VStack(alignment: .leading, spacing: AppSpacing.xl) {
-                // Toolbar Strip: Range, Custom Pickers, Dimension, and Export Button
-                VStack(alignment: .leading, spacing: AppSpacing.sm) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Reports")
-                                .font(AppTypography.heading)
-                            Text("Productivity distribution and time exports")
-                                .font(AppTypography.caption)
-                                .foregroundStyle(.secondary)
-                        }
+        VStack(spacing: 0) {
+            // Header + Controls Toolbar
+            VStack(spacing: AppSpacing.sm) {
+                HStack(spacing: AppSpacing.md) {
+                    Text("Reports")
+                        .font(AppTypography.heading)
+                        .foregroundStyle(.primary)
 
-                        Spacer()
-
-                        // Export Menu Button (D-08)
-                        Menu {
-                            Button("Export as CSV...") {
-                                exportCSV()
-                            }
-                            Button("Export as JSON...") {
-                                exportJSON()
-                            }
-                        } label: {
-                            HStack(spacing: AppSpacing.xs) {
-                                Image(systemName: "square.and.arrow.up")
-                                Text("Export")
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 9, weight: .bold))
-                            }
-                            .padding(.horizontal, AppSpacing.sm)
-                            .padding(.vertical, AppSpacing.xs)
-                            .background(AppColors.brandAccent.opacity(0.12))
-                            .foregroundStyle(AppColors.brandAccent)
-                            .clipShape(RoundedRectangle(cornerRadius: AppSpacing.radiusSmall))
+                    Picker("", selection: $selectedTab) {
+                        ForEach(ReportTab.allCases) { tab in
+                            Text(tab.rawValue).tag(tab)
                         }
-                        .menuStyle(.borderlessButton)
                     }
+                    .pickerStyle(.segmented)
+                    .frame(width: 240)
 
-                    // Filters Row
-                    HStack(spacing: AppSpacing.md) {
-                        Picker("Range", selection: $selectedRange) {
+                    Spacer()
+
+                    // Period Stepper & Preset Picker
+                    HStack(spacing: 4) {
+                        Button { stepPeriod(by: -1) } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 11, weight: .semibold))
+                                .frame(width: 24, height: 24)
+                        }
+                        .buttonStyle(.plain)
+                        .background(Color.secondary.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+
+                        Picker("", selection: $selectedPreset) {
                             ForEach(DateRangePreset.allCases) { preset in
                                 Text(preset.rawValue).tag(preset)
                             }
                         }
-                        .pickerStyle(.segmented)
-                        .frame(maxWidth: 340)
+                        .labelsHidden()
+                        .frame(width: 135)
 
-                        Picker("Dimension", selection: $selectedDimension) {
-                            ForEach(ReportDimension.allCases) { dim in
-                                Text(dim.rawValue).tag(dim)
-                            }
+                        Button { stepPeriod(by: 1) } label: {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 11, weight: .semibold))
+                                .frame(width: 24, height: 24)
                         }
-                        .pickerStyle(.segmented)
-                        .frame(maxWidth: 200)
-
-                        Spacer()
+                        .buttonStyle(.plain)
+                        .background(Color.secondary.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
 
-                    // Custom Date Pickers when 'Custom Range' is selected (D-07)
-                    if selectedRange == .custom {
-                        HStack(spacing: AppSpacing.md) {
-                            DatePicker("Start", selection: $customStartDate, displayedComponents: .date)
-                                .labelsHidden()
-                            Text("to")
-                                .font(AppTypography.caption)
-                                .foregroundStyle(.secondary)
-                            DatePicker("End", selection: $customEndDate, displayedComponents: .date)
-                                .labelsHidden()
-                            Spacer()
+                    Menu {
+                        Button { exportCSV() } label: {
+                            Label("Export CSV", systemImage: "tablecells")
                         }
-                        .padding(.top, AppSpacing.xs)
+                        Button { exportJSON() } label: {
+                            Label("Export JSON", systemImage: "curlybraces")
+                        }
+                        Button { exportPDF() } label: {
+                            Label("Export PDF Report", systemImage: "doc.richtext")
+                        }
+                    } label: {
+                        Label("Export", systemImage: "square.and.arrow.up")
+                            .font(AppTypography.label)
                     }
+                    .menuStyle(.borderedButton)
+                    .fixedSize()
                 }
 
-                // 4 Toggl Track KPI Metric Cards Strip (Reference Images 4 & 8)
-                HStack(spacing: AppSpacing.md) {
-                    summaryCard(
-                        title: "TOTAL HOURS",
-                        value: totalDuration > 0 ? DateHelper.formatHumanDuration(totalDuration) : "0h 0m",
-                        icon: "clock"
-                    )
-                    summaryCard(
-                        title: "BILLABLE HOURS",
-                        value: billableDuration > 0 ? DateHelper.formatHumanDuration(billableDuration) : "0h 0m",
-                        icon: "dollarsign.circle"
-                    )
-                    summaryCard(
-                        title: "AMOUNT",
-                        value: String(format: "$%.2f", billableAmount),
-                        icon: "banknote"
-                    )
-                    summaryCard(
-                        title: "AVERAGE DAILY HOURS",
-                        value: dailyAverage > 0 ? DateHelper.formatHumanDuration(dailyAverage) : "0h 0m",
-                        icon: "chart.bar"
-                    )
-                }
-
-                // Main Analytics Card: Donut Chart + Breakdown Table
-                VStack(alignment: .leading, spacing: AppSpacing.md) {
-                    Text("\(selectedDimension.rawValue) Distribution")
-                        .font(AppTypography.heading)
-
-                    HStack(alignment: .center, spacing: AppSpacing.xl) {
-                        ReportsDonutChartView(
-                            items: breakdownItems,
-                            totalDuration: totalDuration
-                        )
-                        .frame(width: 240)
-
-                        Divider()
-
-                        ReportsBreakdownTableView(items: breakdownItems)
-                            .frame(maxWidth: .infinity)
+                // Filters & Custom Range Row
+                HStack(spacing: AppSpacing.sm) {
+                    if selectedPreset == .custom {
+                        DatePicker("From", selection: $customStartDate, displayedComponents: .date)
+                            .labelsHidden()
+                        Text("→").foregroundStyle(.secondary)
+                        DatePicker("To", selection: $customEndDate, displayedComponents: .date)
+                            .labelsHidden()
+                    } else {
+                        Text(periodDisplayLabel)
+                            .font(AppTypography.caption)
+                            .foregroundStyle(.secondary)
                     }
-                    .padding(AppSpacing.md)
-                    .background(AppColors.cardBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: AppSpacing.radiusCard))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: AppSpacing.radiusCard)
-                            .stroke(AppColors.border, lineWidth: 0.5)
-                    )
+
+                    Spacer()
+
+                    // Search
+                    TextField("Description / project...", text: $searchQuery)
+                        .textFieldStyle(.roundedBorder)
+                        .font(AppTypography.caption)
+                        .frame(width: 150)
+
+                    // Client Filter
+                    Picker("Client", selection: $selectedClientId) {
+                        Text("All Clients").tag(Optional<UUID>.none)
+                        ForEach(store.clients) { c in
+                            Text(c.name).tag(Optional<UUID>.some(c.id))
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 115)
+
+                    // Project Filter
+                    Picker("Project", selection: $selectedProjectId) {
+                        Text("All Projects").tag(Optional<UUID>.none)
+                        ForEach(store.projects) { p in
+                            Text(p.name).tag(Optional<UUID>.some(p.id))
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 120)
+
+                    // Tag Filter
+                    Picker("Tag", selection: $selectedTagId) {
+                        Text("All Tags").tag(Optional<UUID>.none)
+                        ForEach(store.tags) { t in
+                            Text("#\(t.name)").tag(Optional<UUID>.some(t.id))
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 105)
+
+                    // Billable Filter
+                    Picker("Billable", selection: $billableFilter) {
+                        ForEach(BillableFilter.allCases) { bf in
+                            Text(bf.rawValue).tag(bf)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 115)
                 }
             }
-            .padding(AppSpacing.xl)
+            .padding(.horizontal, AppSpacing.lg)
+            .padding(.vertical, AppSpacing.md)
+
+            Divider()
+
+            // Main Report Content
+            ScrollView {
+                VStack(alignment: .leading, spacing: AppSpacing.lg) {
+                    // KPI Metrics Row
+                    HStack(spacing: AppSpacing.md) {
+                        kpiCard(
+                            title: "Total Tracked",
+                            value: TimeCalculator.formatCompactDuration(totalTrackedDuration),
+                            icon: "clock.fill",
+                            color: AppColors.brandAccent
+                        )
+                        kpiCard(
+                            title: "Billable Time",
+                            value: TimeCalculator.formatCompactDuration(billableDuration),
+                            icon: "dollarsign.circle.fill",
+                            color: AppColors.billable
+                        )
+                        kpiCard(
+                            title: "Billable Share",
+                            value: "\(billablePercentage)%",
+                            icon: "chart.pie.fill",
+                            color: AppColors.togglMagenta
+                        )
+                        kpiCard(
+                            title: "Estimated Earnings",
+                            value: "\(primaryCurrencySymbol)\(String(format: "%.2f", totalBillableEarnings))",
+                            icon: "banknote.fill",
+                            color: AppColors.goalGold
+                        )
+                    }
+
+                    switch selectedTab {
+                    case .summary:
+                        HStack(alignment: .top, spacing: AppSpacing.lg) {
+                            ReportsDailyBarChartView(
+                                entries: filteredEntries,
+                                projects: store.projects,
+                                startDate: resolvedDateRange.start,
+                                endDate: resolvedDateRange.end
+                            )
+
+                            VStack(spacing: AppSpacing.sm) {
+                                ReportsDonutChartView(
+                                    items: projectBreakdown,
+                                    totalDuration: totalTrackedDuration
+                                )
+                            }
+                            .padding(AppSpacing.lg)
+                            .frame(width: 280)
+                            .background(AppColors.cardBackground)
+                            .clipShape(RoundedRectangle(cornerRadius: AppSpacing.radiusCard))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AppSpacing.radiusCard)
+                                    .stroke(AppColors.border, lineWidth: 0.5)
+                            )
+                        }
+
+                        ReportsHierarchyView(
+                            entries: filteredEntries,
+                            projects: store.projects,
+                            clients: store.clients,
+                            tasks: store.tasks,
+                            defaultHourlyRate: defaultHourlyRate
+                        )
+
+                    case .detailed:
+                        ReportsDetailedTableView(entries: filteredEntries)
+
+                    case .weekly:
+                        ReportsWeeklyMatrixView(
+                            entries: filteredEntries,
+                            projects: store.projects,
+                            clients: store.clients,
+                            referenceDate: resolvedDateRange.start
+                        )
+                    }
+                }
+                .padding(AppSpacing.lg)
+            }
         }
         .background(AppColors.background)
     }
 
     @ViewBuilder
-    private func summaryCard(title: String, value: String, icon: String) -> some View {
-        VStack(alignment: .leading, spacing: AppSpacing.xs) {
-            HStack {
+    private func kpiCard(title: String, value: String, icon: String, color: Color) -> some View {
+        HStack(spacing: AppSpacing.md) {
+            Image(systemName: icon)
+                .font(.system(size: 18))
+                .foregroundStyle(color)
+                .frame(width: 34, height: 34)
+                .background(color.opacity(0.14))
+                .clipShape(RoundedRectangle(cornerRadius: AppSpacing.radiusSmall))
+
+            VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(AppTypography.caption)
                     .foregroundStyle(.secondary)
-                Spacer()
-                Image(systemName: icon)
-                    .font(.system(size: 13))
-                    .foregroundStyle(AppColors.brandAccent)
+                Text(value)
+                    .font(.system(size: 16, weight: .bold, design: .monospaced))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
             }
-            Text(value)
-                .font(AppTypography.heading)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+
+            Spacer(minLength: 0)
         }
         .padding(AppSpacing.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity)
         .background(AppColors.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: AppSpacing.radiusCard))
         .overlay(
@@ -346,19 +435,33 @@ public struct ReportsView: View {
         )
     }
 
+    private func stepPeriod(by direction: Int) {
+        let range = resolvedDateRange
+        let spanDays = max(1, (Calendar.current.dateComponents([.day], from: range.start, to: range.end).day ?? 0) + 1)
+        let cal = Calendar.current
+        if let newStart = cal.date(byAdding: .day, value: direction * spanDays, to: range.start),
+           let newEnd = cal.date(byAdding: .day, value: direction * spanDays, to: range.end) {
+            customStartDate = newStart
+            customEndDate = newEnd
+            selectedPreset = .custom
+        }
+    }
+
     private func exportCSV() {
         let csv = ExportService.generateCSV(
             entries: filteredEntries,
             projects: store.projects,
             clients: store.clients,
-            tasks: store.tasks
+            tasks: store.tasks,
+            tags: store.tags,
+            defaultHourlyRate: defaultHourlyRate,
+            includeExtendedColumns: true
         )
         let dateStr = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
             .replacingOccurrences(of: "/", with: "-")
-        let filename = "TimeStamp-Report-\(dateStr).csv"
         ExportService.presentSavePanel(
             data: Data(csv.utf8),
-            defaultFilename: filename,
+            defaultFilename: "TimeStamp-Report-\(dateStr).csv",
             fileExtension: "csv"
         )
     }
@@ -368,15 +471,35 @@ public struct ReportsView: View {
             entries: filteredEntries,
             projects: store.projects,
             clients: store.clients,
-            tasks: store.tasks
+            tasks: store.tasks,
+            tags: store.tags,
+            defaultHourlyRate: defaultHourlyRate
         )
         let dateStr = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
             .replacingOccurrences(of: "/", with: "-")
-        let filename = "TimeStamp-Report-\(dateStr).json"
         ExportService.presentSavePanel(
             data: json,
-            defaultFilename: filename,
+            defaultFilename: "TimeStamp-Report-\(dateStr).json",
             fileExtension: "json"
+        )
+    }
+
+    private func exportPDF() {
+        let pdf = ExportService.generatePDF(
+            title: "TimeStamp Report (\(selectedTab.rawValue))",
+            periodLabel: periodDisplayLabel,
+            entries: filteredEntries,
+            projects: store.projects,
+            clients: store.clients,
+            tasks: store.tasks,
+            defaultHourlyRate: defaultHourlyRate
+        )
+        let dateStr = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
+            .replacingOccurrences(of: "/", with: "-")
+        ExportService.presentSavePanel(
+            data: pdf,
+            defaultFilename: "TimeStamp-Report-\(dateStr).pdf",
+            fileExtension: "pdf"
         )
     }
 }

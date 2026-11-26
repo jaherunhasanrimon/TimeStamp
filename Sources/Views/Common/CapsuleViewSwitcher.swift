@@ -7,7 +7,7 @@ public enum TrackerViewMode: String, CaseIterable, Identifiable {
     public var id: String { rawValue }
 }
 
-/// Toggl Track segmented capsule switcher for List and Calendar modes.
+/// Toggl Track macOS pill/capsule switcher for List and Calendar modes (Reference: toggl_macos_main_empty.jpg).
 public struct CapsuleViewSwitcher: View {
     @Binding public var selectedMode: TrackerViewMode
 
@@ -16,7 +16,7 @@ public struct CapsuleViewSwitcher: View {
     }
 
     public var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 2) {
             ForEach(TrackerViewMode.allCases) { mode in
                 let isSelected = selectedMode == mode
                 Button(action: {
@@ -24,22 +24,28 @@ public struct CapsuleViewSwitcher: View {
                         selectedMode = mode
                     }
                 }) {
-                    VStack(spacing: 4) {
-                        Text(mode.rawValue)
-                            .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
-                            .foregroundStyle(isSelected ? Color.primary : .secondary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 8)
-
-                        // Underline indicator in Toggl Magenta (#E54583)
-                        Rectangle()
-                            .fill(isSelected ? AppColors.togglMagenta : Color.clear)
-                            .frame(height: 2)
-                    }
+                    Text(mode.rawValue)
+                        .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
+                        .foregroundStyle(isSelected ? Color.primary : .secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(isSelected ? AppColors.capsuleActiveThumb : Color.clear)
+                        )
                 }
                 .buttonStyle(.plain)
             }
         }
-        .background(AppColors.cardBackground)
+        .padding(3)
+        .background(AppColors.capsuleTrack)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(AppColors.border.opacity(0.6), lineWidth: 0.5)
+        )
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(AppColors.background)
     }
 }

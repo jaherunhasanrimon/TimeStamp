@@ -228,6 +228,46 @@ public struct MenuBarPopoverView: View {
                 }
             }
 
+            // Quick Resume: Favorites & Recent Completed Entries
+            let quickItems = store.favoriteEntries.isEmpty
+                ? Array(store.timeEntries.filter { $0.endDate != nil }.sorted { $0.startDate > $1.startDate }.prefix(3))
+                : Array(store.favoriteEntries.prefix(3))
+
+            if !quickItems.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(store.favoriteEntries.isEmpty ? "RECENT" : "FAVORITES")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.secondary)
+                        .tracking(0.6)
+
+                    ForEach(quickItems) { item in
+                        let proj = item.projectId.flatMap { store.project(for: $0) }
+                        Button {
+                            timerManager.continueEntry(item)
+                        } label: {
+                            HStack(spacing: 6) {
+                                Circle()
+                                    .fill(Color(hex: proj?.colorHex ?? "#8E8E93"))
+                                    .frame(width: 6, height: 6)
+                                Text(item.entryDescription.isEmpty ? (proj?.name ?? "Untitled") : item.entryDescription)
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.primary)
+                                    .lineLimit(1)
+                                Spacer()
+                                Image(systemName: "play.fill")
+                                    .font(.system(size: 8))
+                                    .foregroundStyle(AppColors.togglMagenta)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(AppColors.insetBackground.opacity(0.6))
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
             Divider()
 
             // Footer Section
@@ -238,6 +278,14 @@ public struct MenuBarPopoverView: View {
                 .buttonStyle(.plain)
                 .font(AppTypography.caption)
                 .foregroundStyle(AppColors.brandAccent)
+
+                Button("Mini-Timer") {
+                    NotificationCenter.default.post(name: .tsToggleMiniTimer, object: nil)
+                }
+                .buttonStyle(.plain)
+                .font(AppTypography.caption)
+                .foregroundStyle(.secondary)
+                .help("Toggle Floating Mini-Timer (⇧⌘M)")
 
                 Spacer()
 

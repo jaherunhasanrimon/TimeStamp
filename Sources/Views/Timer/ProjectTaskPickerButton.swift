@@ -5,6 +5,7 @@ public struct ProjectTaskPickerButton: View {
 
     @Binding public var selectedProjectId: UUID?
     @Binding public var selectedTaskId: UUID?
+    @State private var isPopoverPresented: Bool = false
 
     public init(selectedProjectId: Binding<UUID?>, selectedTaskId: Binding<UUID?>) {
         self._selectedProjectId = selectedProjectId
@@ -22,47 +23,8 @@ public struct ProjectTaskPickerButton: View {
     }
 
     public var body: some View {
-        Menu {
-            // Option to deselect project
-            Button {
-                selectedProjectId = nil
-                selectedTaskId = nil
-            } label: {
-                Label("No Project", systemImage: "xmark")
-            }
-
-            if !store.projects.isEmpty {
-                Divider()
-
-                ForEach(store.projects) { project in
-                    let tasks = store.tasks.filter { $0.projectId == project.id && !$0.isCompleted }
-
-                    if tasks.isEmpty {
-                        Button {
-                            selectedProjectId = project.id
-                            selectedTaskId = nil
-                        } label: {
-                            Text(project.name)
-                        }
-                    } else {
-                        Menu(project.name) {
-                            Button("Project only (\(project.name))") {
-                                selectedProjectId = project.id
-                                selectedTaskId = nil
-                            }
-
-                            Divider()
-
-                            ForEach(tasks) { task in
-                                Button(task.name) {
-                                    selectedProjectId = project.id
-                                    selectedTaskId = task.id
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        Button {
+            isPopoverPresented.toggle()
         } label: {
             HStack(spacing: AppSpacing.xs) {
                 if let project = selectedProject {
@@ -104,7 +66,13 @@ public struct ProjectTaskPickerButton: View {
                     .stroke(AppColors.subtleBorder, lineWidth: 1)
             )
         }
-        .menuStyle(.borderlessButton)
-        .fixedSize()
+        .buttonStyle(.plain)
+        .popover(isPresented: $isPopoverPresented, arrowEdge: .bottom) {
+            ProjectPickerPopover(
+                selectedProjectId: $selectedProjectId,
+                selectedTaskId: $selectedTaskId,
+                onDismiss: { isPopoverPresented = false }
+            )
+        }
     }
 }

@@ -25,7 +25,78 @@ public struct PositionedBlock: Identifiable, Equatable {
     }
 }
 
+public enum ResizeEdge {
+    case top
+    case bottom
+}
+
 public enum CalendarLayoutHelper {
+
+    /// Snaps a minute offset within a day to the given step interval (minimum 1 minute).
+    public static func snapMinutes(_ minutes: Double, snapInterval: Int) -> Double {
+        let step = Double(max(1, snapInterval))
+        let snapped = (minutes / step).rounded() * step
+        return max(0.0, min(1440.0, snapped))
+    }
+
+    /// Converts a vertical coordinate on a timeline day column to a snapped timestamp.
+    public static func snappedStartDate(
+        atY y: Double,
+        hourHeight: CGFloat,
+        dayDate: Date,
+        snapMinutes: Int = 15,
+        calendar: Calendar = .current
+    ) -> Date {
+        let rawMinutes = max(0.0, min(1440.0, (y / Double(hourHeight)) * 60.0))
+        let step = Double(max(1, snapMinutes))
+        let floored = (rawMinutes / step).rounded(.down) * step
+        let clamped = max(0.0, min(1440.0 - step, floored))
+        let startOfDay = calendar.startOfDay(for: dayDate)
+        return startOfDay.addingTimeInterval(clamped * 60.0)
+    }
+
+    /// Computes snapped moved start/end dates preserving the original entry duration.
+    public static func movedDates(
+        originalStart: Date,
+        originalEnd: Date,
+        deltaY: Double,
+        hourHeight: CGFloat,
+        snapMinutes: Int = 15
+    ) -> (start: Date, end: Date) {
+        let rawDeltaMinutes = (deltaY / Double(hourHeight)) * 60.0
+        let step = Double(max(1, snapMinutes))
+        let snappedDeltaMin = (rawDeltaMinutes / step).rounded() * step
+        let duration = max(60.0, originalEnd.timeIntervalSince(originalStart))
+        let newStart = originalStart.addingTimeInterval(snappedDeltaMin * 60.0)
+        return (newStart, newStart.addingTimeInterval(duration))
+    }
+
+    /// Computes snapped resized start/end dates when dragging top or bottom handle.
+    public static func resizedDates(
+        originalStart: Date,
+        originalEnd: Date,
+        edge: ResizeEdge,
+        deltaY: Double,
+        hourHeight: CGFloat,
+        snapMinutes: Int = 15,
+        minDurationSeconds: TimeInterval = 300
+    ) -> (start: Date, end: Date) {
+        let rawDeltaMinutes = (deltaY / Double(hourHeight)) * 60.0
+        let step = Double(max(1, snapMinutes))
+        let snappedDeltaSec = (rawDeltaMinutes / step).rounded() * step * 60.0
+        let minDur = max(60.0, minDurationSeconds)
+
+        switch edge {
+        case .bottom:
+            let candidateEnd = originalEnd.addingTimeInterval(snappedDeltaSec)
+            let clampedEnd = max(originalStart.addingTimeInterval(minDur), candidateEnd)
+            return (originalStart, clampedEnd)
+        case .top:
+            let candidateStart = originalStart.addingTimeInterval(snappedDeltaSec)
+            let clampedStart = min(originalEnd.addingTimeInterval(-minDur), candidateStart)
+            return (clampedStart, originalEnd)
+        }
+    }
 
     private struct CandidateBlock {
         let entry: TimeEntry

@@ -90,8 +90,14 @@ public struct TimeEntryRowView: View {
 
             Spacer(minLength: 8)
 
-            // Right Column: Billable $ + Monospace Duration + Play-Again Hover
+            // Right Column: Favorite Star + Billable $ + Monospace Duration + Play-Again Hover
             HStack(spacing: 10) {
+                if entry.isFavorite {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(AppColors.goalGold)
+                }
+
                 if entry.isBillable {
                     Text("$")
                         .font(.system(size: 12, weight: .bold))
@@ -138,6 +144,14 @@ public struct TimeEntryRowView: View {
         .contextMenu {
             Button("Continue tracking") {
                 startCopyTimer()
+            }
+
+            Button("Duplicate") {
+                _ = store.duplicateTimeEntry(entry)
+            }
+
+            Button(entry.isFavorite ? "Remove from Favorites" : "Pin as Favorite") {
+                store.toggleFavorite(id: entry.id)
             }
 
             Button("Edit details...") {

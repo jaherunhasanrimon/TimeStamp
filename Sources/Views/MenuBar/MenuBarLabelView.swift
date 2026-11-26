@@ -1,11 +1,22 @@
 import SwiftUI
 
 public struct MenuBarLabelView: View {
+    @Environment(PersistenceStore.self) private var store
     @Environment(TimerManager.self) private var timerManager
     @Environment(PomodoroManager.self) private var pomodoroManager
     @AppStorage("menuBarDisplayFormat") private var displayFormat: String = "icon_and_duration"
+    @AppStorage("menuBarShowProject") private var showProject: Bool = true
 
     public init() {}
+
+    private var activeProjectOrDescriptionLabel: String? {
+        guard showProject, let active = timerManager.activeEntry else { return nil }
+        if let pid = active.projectId, let proj = store.project(for: pid) {
+            return String(proj.name.prefix(16))
+        }
+        let desc = active.entryDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        return desc.isEmpty ? nil : String(desc.prefix(16))
+    }
 
     public var body: some View {
         Group {
@@ -26,8 +37,13 @@ public struct MenuBarLabelView: View {
                         Image(systemName: "stopwatch")
                     }
                     if displayFormat != "icon_only" {
-                        Text(timerManager.formattedDuration)
-                            .font(Font.system(size: 13, design: .default).monospacedDigit())
+                        if let label = activeProjectOrDescriptionLabel {
+                            Text("\(timerManager.formattedDuration) · \(label)")
+                                .font(Font.system(size: 13, design: .default).monospacedDigit())
+                        } else {
+                            Text(timerManager.formattedDuration)
+                                .font(Font.system(size: 13, design: .default).monospacedDigit())
+                        }
                     }
                 }
                 .help(runningTooltip)

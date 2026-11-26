@@ -13,7 +13,8 @@ public final class TimeEntry: Identifiable, Codable, Equatable {
         lhs.projectId == rhs.projectId &&
         lhs.taskId == rhs.taskId &&
         lhs.tagIds == rhs.tagIds &&
-        lhs.isBillable == rhs.isBillable
+        lhs.isBillable == rhs.isBillable &&
+        lhs.isFavorite == rhs.isFavorite
     }
     public let id: UUID
     public var entryDescription: String
@@ -27,6 +28,7 @@ public final class TimeEntry: Identifiable, Codable, Equatable {
     public var taskId: UUID?
     public var tagIds: [UUID]
     public var isBillable: Bool
+    public var isFavorite: Bool
 
     public var isRunning: Bool {
         endDate == nil && !isPaused
@@ -58,7 +60,8 @@ public final class TimeEntry: Identifiable, Codable, Equatable {
         projectId: UUID? = nil,
         taskId: UUID? = nil,
         tagIds: [UUID] = [],
-        isBillable: Bool = false
+        isBillable: Bool = false,
+        isFavorite: Bool = false
     ) {
         self.id = id
         self.entryDescription = entryDescription
@@ -72,6 +75,7 @@ public final class TimeEntry: Identifiable, Codable, Equatable {
         self.taskId = taskId
         self.tagIds = tagIds
         self.isBillable = isBillable
+        self.isFavorite = isFavorite
     }
 
     enum CodingKeys: String, CodingKey {
@@ -87,6 +91,7 @@ public final class TimeEntry: Identifiable, Codable, Equatable {
         case taskId
         case tagIds
         case isBillable
+        case isFavorite
     }
 
     public init(from decoder: Decoder) throws {
@@ -103,6 +108,7 @@ public final class TimeEntry: Identifiable, Codable, Equatable {
         self.taskId = try container.decodeIfPresent(UUID.self, forKey: .taskId)
         self.tagIds = try container.decodeIfPresent([UUID].self, forKey: .tagIds) ?? []
         self.isBillable = try container.decodeIfPresent(Bool.self, forKey: .isBillable) ?? false
+        self.isFavorite = try container.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -119,5 +125,6 @@ public final class TimeEntry: Identifiable, Codable, Equatable {
         try container.encode(taskId, forKey: .taskId)
         try container.encode(tagIds, forKey: .tagIds)
         try container.encode(isBillable, forKey: .isBillable)
+        try container.encode(isFavorite, forKey: .isFavorite)
     }
 }

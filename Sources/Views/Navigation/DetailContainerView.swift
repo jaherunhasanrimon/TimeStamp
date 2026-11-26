@@ -14,8 +14,9 @@ public struct DetailContainerView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            // Global Sticky Active Timer Bar (D-01)
+            // Global Sticky Active Timer Bar (D-01) with zIndex for floating Autocomplete
             ActiveTimerBar()
+                .zIndex(50)
 
             Group {
                 switch destination {
@@ -28,6 +29,11 @@ public struct DetailContainerView: View {
                     })
                 case .clients:
                     ClientsListView(onViewEntries: { filter in
+                        activeEntryFilter = filter
+                        destination = .timer
+                    })
+                case .tags:
+                    TagsListView(onViewEntries: { filter in
                         activeEntryFilter = filter
                         destination = .timer
                     })

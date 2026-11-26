@@ -9,6 +9,7 @@ public final class TimerManager {
     public private(set) var activeEntry: TimeEntry?
     public private(set) var currentDuration: TimeInterval = 0
     public private(set) var formattedDuration: String = "00:00:00"
+    public private(set) var compactFormattedDuration: String = "0:00:00"
     public private(set) var isPaused: Bool = false
 
     public var isRunning: Bool {
@@ -22,6 +23,7 @@ public final class TimerManager {
     public var retainedIsBillable: Bool = false
 
     private let store: PersistenceStore
+    public var isInMemoryStore: Bool { store.isInMemory }
     private var sleepMonitor: SleepWakeMonitor?
     private var tickTimer: Timer?
 
@@ -29,6 +31,28 @@ public final class TimerManager {
         self.store = store
         setupSleepMonitor()
         restoreActiveSession()
+        applyDefaultProjectIfIdle()
+    }
+
+    /// Reads configured Default Project from UserDefaults if active/retained project is nil and store is not in-memory.
+    public func applyDefaultProjectIfIdle(defaultProjectIdString: String? = nil) {
+        guard activeEntry == nil, retainedProjectId == nil else { return }
+        let resolvedIdStr: String?
+        if let explicit = defaultProjectIdString {
+            resolvedIdStr = explicit
+        } else {
+            guard !store.isInMemory else { return }
+            resolvedIdStr = UserDefaults.standard.string(forKey: "defaultProjectId")
+        }
+        if let idStr = resolvedIdStr,
+           let uuid = UUID(uuidString: idStr),
+           let project = store.project(for: uuid),
+           !project.isArchived {
+            self.retainedProjectId = project.id
+            if project.isBillableDefault {
+                self.retainedIsBillable = true
+            }
+        }
     }
 
     private func setupSleepMonitor() {
@@ -142,6 +166,7 @@ public final class TimerManager {
         self.isPaused = false
         self.currentDuration = 0
         self.formattedDuration = "00:00:00"
+        self.compactFormattedDuration = "0:00:00"
 
         return completed
     }
@@ -157,6 +182,7 @@ public final class TimerManager {
         self.isPaused = false
         self.currentDuration = 0
         self.formattedDuration = "00:00:00"
+        self.compactFormattedDuration = "0:00:00"
     }
 
     /// Continues tracking from a past entry with seamless auto-switch (TIMER-04, D-09, D-10, D-11, D-12)
@@ -168,6 +194,17 @@ public final class TimerManager {
             tagIds: entry.tagIds,
             isBillable: entry.isBillable
         )
+    }
+
+    /// Continues the most recently completed time entry (Cmd+O shortcut)
+    public func continueLastEntry() {
+        guard let last = store.timeEntries
+            .filter({ $0.endDate != nil })
+            .sorted(by: { $0.startDate > $1.startDate })
+            .first else {
+            return
+        }
+        continueEntry(last)
     }
 
     // MARK: - Rehydration / Auto-Restore (D-14)
@@ -212,6 +249,7 @@ public final class TimerManager {
         guard let entry = activeEntry else {
             self.currentDuration = 0
             self.formattedDuration = "00:00:00"
+            self.compactFormattedDuration = "0:00:00"
             return
         }
 
@@ -224,5 +262,6 @@ public final class TimerManager {
 
         self.currentDuration = duration
         self.formattedDuration = TimeCalculator.formatDuration(duration)
+        self.compactFormattedDuration = TimeCalculator.formatCompactDuration(duration)
     }
 }

@@ -168,6 +168,10 @@ struct ClientManagementTests {
             }
         case .tag(let tId):
             return store.timeEntries.filter { $0.tagIds.contains(tId) }
+        case .billableOnly:
+            return store.timeEntries.filter { $0.isBillable }
+        case .nonBillableOnly:
+            return store.timeEntries.filter { !$0.isBillable }
         }
     }
 }

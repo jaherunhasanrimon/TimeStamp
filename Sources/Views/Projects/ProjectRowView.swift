@@ -42,6 +42,22 @@ public struct ProjectRowView: View {
         return store.clients.first(where: { $0.id == clientId })?.name
     }
 
+    private var associatedClient: Client? {
+        guard let clientId = project.clientId else { return nil }
+        return store.clients.first(where: { $0.id == clientId })
+    }
+
+    private var effectiveHourlyRate: (rate: Double, currency: String, isInherited: Bool)? {
+        let currency = associatedClient?.currency ?? "$"
+        if let projectRate = project.hourlyRate, projectRate > 0 {
+            return (projectRate, currency, false)
+        }
+        if let clientRate = associatedClient?.hourlyRate, clientRate > 0 {
+            return (clientRate, currency, true)
+        }
+        return nil
+    }
+
     private var totalTrackedDuration: TimeInterval {
         store.timeEntries
             .filter { $0.projectId == project.id }
@@ -124,13 +140,48 @@ public struct ProjectRowView: View {
 
                 // Metrics
                 HStack(spacing: AppSpacing.sm) {
+                    if let rateInfo = effectiveHourlyRate {
+                        let formattedRate = rateInfo.rate.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(rateInfo.rate))" : String(format: "%.2f", rateInfo.rate)
+                        Text("\(rateInfo.currency)\(formattedRate)/hr\(rateInfo.isInherited ? " · client" : "")")
+                            .font(AppTypography.caption)
+                            .foregroundStyle(AppColors.billable)
+                            .padding(.horizontal, AppSpacing.xs)
+                            .padding(.vertical, 2)
+                            .background(AppColors.billable.opacity(0.10))
+                            .clipShape(RoundedRectangle(cornerRadius: AppSpacing.radiusSmall))
+                    } else if project.isBillableDefault {
+                        Text("$ Billable")
+                            .font(AppTypography.caption)
+                            .foregroundStyle(AppColors.billable)
+                            .padding(.horizontal, AppSpacing.xs)
+                            .padding(.vertical, 2)
+                            .background(AppColors.billable.opacity(0.10))
+                            .clipShape(RoundedRectangle(cornerRadius: AppSpacing.radiusSmall))
+                    }
+
                     if !projectTasks.isEmpty {
                         Text("\(activeTasks.count) tasks")
                             .font(AppTypography.caption)
                             .foregroundStyle(.secondary)
                     }
 
-                    if totalTrackedDuration > 0 {
+                    if let estHours = project.estimatedHours, estHours > 0 {
+                        let trackedHours = totalTrackedDuration / 3600.0
+                        let ratio = trackedHours / estHours
+                        HStack(spacing: 6) {
+                            ProgressView(value: min(1.0, ratio))
+                                .progressViewStyle(.linear)
+                                .tint(ratio > 1.0 ? AppColors.destructive : AppColors.brandAccent)
+                                .frame(width: 48)
+                            Text(String(format: "%.1f/%.0fh (%.0f%%)", trackedHours, estHours, ratio * 100.0))
+                                .font(AppTypography.caption)
+                                .foregroundStyle(ratio > 1.0 ? AppColors.destructive : Color.secondary)
+                        }
+                        .padding(.horizontal, AppSpacing.xs)
+                        .padding(.vertical, 2)
+                        .background(Color.secondary.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: AppSpacing.radiusSmall))
+                    } else if totalTrackedDuration > 0 {
                         Text(DateHelper.formatHumanDuration(totalTrackedDuration))
                             .font(AppTypography.caption)
                             .foregroundStyle(.secondary)

@@ -45,6 +45,31 @@ public enum AppColors {
         secondaryCardBackground
     }
 
+    // Capsule segmented track & active thumb matching Toggl Track macOS
+    public static var capsuleTrack: Color {
+        #if os(macOS)
+        return Color(nsColor: NSColor(name: nil, dynamicProvider: { appearance in
+            appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                ? NSColor(red: 0.110, green: 0.086, blue: 0.149, alpha: 1.0) // #1C1626
+                : NSColor(red: 0.937, green: 0.922, blue: 0.910, alpha: 1.0) // #EFEBE8
+        }))
+        #else
+        return Color(hex: "#1C1626")
+        #endif
+    }
+
+    public static var capsuleActiveThumb: Color {
+        #if os(macOS)
+        return Color(nsColor: NSColor(name: nil, dynamicProvider: { appearance in
+            appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                ? NSColor(red: 0.180, green: 0.145, blue: 0.231, alpha: 1.0) // #2E253B
+                : NSColor.white
+        }))
+        #else
+        return Color(hex: "#2E253B")
+        #endif
+    }
+
     // Inset Background (Inputs, Segmented Controls): #100D15 in dark, #ECE8E4 in light
     public static var insetBackground: Color {
         #if os(macOS)

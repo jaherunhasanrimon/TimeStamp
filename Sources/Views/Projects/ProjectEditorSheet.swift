@@ -15,6 +15,9 @@ public struct ProjectEditorSheet: View {
     @State private var selectedClientId: UUID? = nil
     @State private var colorHex: String = AppColors.projectColors[0]
     @State private var isArchived: Bool = false
+    @State private var hourlyRateText: String = ""
+    @State private var isBillableDefault: Bool = false
+    @State private var estimatedHoursText: String = ""
     @State private var isCreatingClientInline: Bool = false
     @State private var newClientName: String = ""
 
@@ -119,6 +122,32 @@ public struct ProjectEditorSheet: View {
                 // Color Swatches
                 ColorSwatchPicker(selectedHex: $colorHex)
 
+                // Billing & Estimate Settings
+                HStack(spacing: AppSpacing.md) {
+                    VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                        let currency = selectedClientId.flatMap { store.client(for: $0)?.currency } ?? "$"
+                        Text("Hourly Rate (\(currency)/hr)")
+                            .font(AppTypography.label)
+                            .foregroundStyle(.secondary)
+                        TextField("e.g. 75", text: $hourlyRateText)
+                            .textFieldStyle(.roundedBorder)
+                            .font(AppTypography.body)
+                    }
+
+                    VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                        Text("Time Estimate (hours)")
+                            .font(AppTypography.label)
+                            .foregroundStyle(.secondary)
+                        TextField("e.g. 40", text: $estimatedHoursText)
+                            .textFieldStyle(.roundedBorder)
+                            .font(AppTypography.body)
+                    }
+                }
+
+                Toggle("Billable by default", isOn: $isBillableDefault)
+                    .font(AppTypography.body)
+                    .help("Automatically mark new time entries on this project as billable")
+
                 // Archive Toggle (Edit mode only)
                 if isEditMode {
                     Toggle("Archive Project", isOn: $isArchived)
@@ -150,7 +179,7 @@ public struct ProjectEditorSheet: View {
             .padding(.horizontal, AppSpacing.lg)
             .padding(.vertical, AppSpacing.md)
         }
-        .frame(width: 420)
+        .frame(width: 440)
         .background(AppColors.background)
         .onAppear {
             switch mode {
@@ -161,6 +190,13 @@ public struct ProjectEditorSheet: View {
                 self.selectedClientId = project.clientId
                 self.colorHex = project.colorHex
                 self.isArchived = project.isArchived
+                self.isBillableDefault = project.isBillableDefault
+                if let rate = project.hourlyRate, rate > 0 {
+                    self.hourlyRateText = rate.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(rate))" : String(format: "%.2f", rate)
+                }
+                if let est = project.estimatedHours, est > 0 {
+                    self.estimatedHoursText = est.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(est))" : String(format: "%.2f", est)
+                }
             }
         }
     }
@@ -169,17 +205,29 @@ public struct ProjectEditorSheet: View {
         let trimmedName = name.trimmingCharacters(in: .whitespaces)
         guard !trimmedName.isEmpty else { return }
 
+        let parsedRate = Double(hourlyRateText.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: "."))
+        let resolvedRate = (parsedRate ?? 0) > 0 ? parsedRate : nil
+
+        let parsedEst = Double(estimatedHoursText.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: "."))
+        let resolvedEst = (parsedEst ?? 0) > 0 ? parsedEst : nil
+
         if let existing = targetProject {
             existing.name = trimmedName
             existing.clientId = selectedClientId
             existing.colorHex = colorHex
             existing.isArchived = isArchived
+            existing.hourlyRate = resolvedRate
+            existing.isBillableDefault = isBillableDefault
+            existing.estimatedHours = resolvedEst
             store.saveProject(existing)
         } else {
             let newProject = Project(
                 name: trimmedName,
                 colorHex: colorHex,
                 isArchived: isArchived,
+                hourlyRate: resolvedRate,
+                isBillableDefault: isBillableDefault,
+                estimatedHours: resolvedEst,
                 clientId: selectedClientId
             )
             store.saveProject(newProject)
