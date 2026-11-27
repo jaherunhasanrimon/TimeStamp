@@ -27,6 +27,11 @@ public final class TimerManager {
     private var sleepMonitor: SleepWakeMonitor?
     private var tickTimer: Timer?
 
+    /// Optional callback invoked whenever a timer session starts or resumes.
+    /// Set by `IdleDetectionManager` after both singletons are initialised to
+    /// break the initialisation cycle (D-IDLE-01).
+    public var onTimerSessionStarted: ((Date) -> Void)?
+
     public init(store: PersistenceStore) {
         self.store = store
         setupSleepMonitor()
@@ -103,6 +108,7 @@ public final class TimerManager {
         store.saveTimeEntry(entry)
         updateTick()
         startTickTimer()
+        onTimerSessionStarted?(entry.startDate)
     }
 
     /// Pauses an active timer without losing accumulated duration (TIMER-02)
@@ -134,6 +140,8 @@ public final class TimerManager {
         updateTick()
         startTickTimer()
         store.saveTimeEntry(entry)
+        // Notify idle detection so idle readings before this resume are ignored (D-IDLE-01)
+        onTimerSessionStarted?(now)
     }
 
     /// Stops the timer and saves the completed TimeEntry (TIMER-03)
@@ -222,6 +230,9 @@ public final class TimerManager {
             updateTick()
             if !existingActive.isPaused {
                 startTickTimer()
+                // Baseline idle detection from "now" on launch so stale HID readings before
+                // the user launched the app do not trigger an immediate idle sheet (D-IDLE-01)
+                onTimerSessionStarted?(Date())
             }
         }
     }

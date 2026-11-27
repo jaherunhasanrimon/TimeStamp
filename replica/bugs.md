@@ -39,3 +39,21 @@
 
 ## Current Status: 0 Open S1 / S2 / S3 / S4 Bugs
 All identified issues have been fixed and regression-tested. Release build is verified and running.
+
+---
+
+### BUG-07 [Severity S2 - UX] False Idle Detection Immediately After Timer Start (D-IDLE-01)
+
+- **Discovered:** Manual Acceptance Test 1 (Test 1: Timer start, pause, stop and resume)
+- **Symptom:** Immediately after clicking Play to start a new timer (after ~22 seconds), the idle-resolution sheet appeared with "You were inactive for 0m". The timer count-up itself was correct.
+- **Root Cause:** `IdleDetectionManager.evaluateIdleState()` compared the raw system-wide HID idle counter (`CGEventSource.secondsSinceLastEventType`) directly against the threshold without clamping it to the current timer session's elapsed time. If the Mac was idle before the timer started (e.g., user was reading, then clicked Play), the stale HID reading — accumulated before the session — could exceed the threshold the moment the first 15-second poll fired.
+- **Fix (D-IDLE-01):**
+  - Added `timerSessionStartedAt: Date?` property to `IdleDetectionManager`.
+  - `evaluateIdleState` now computes `effectiveIdleSeconds = min(rawHIDSeconds, secondsSinceSessionStart)`. Idle time predating the timer session is excluded.
+  - Added `notifyTimerStarted(at:)` to record the session baseline and auto-dismiss stale prompts.
+  - `IdleDetectionManager.startMonitoring()` wires an `onTimerSessionStarted` callback into `TimerManager` to avoid a singleton initialisation cycle.
+  - `TimerManager.start()`, `resume()`, and `restoreActiveSession()` all fire the callback.
+- **Files Changed:** `Sources/Core/System/IdleDetectionManager.swift`, `Sources/Core/Timer/TimerManager.swift`
+- **Regression Tests Added:** 3 new tests in `Tests/Phase5SystemIntegrationTests.swift` (D-IDLE-01 suite)
+- **Test Suite After Fix:** 132/132 passing, exit code 0
+- **Status:** FIXED

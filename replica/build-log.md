@@ -55,3 +55,34 @@ Systematic parity engineering across Phases 0–6 completed cleanly on Apple Sil
 - Fixed two real release-runtime bugs caught on live launch: tolerant production `Goal` enum decoding (`At least`/`Daily`) and safe `NSApp != nil` guard in `SystemIntegrationManager.applyDockIconPolicy()`.
 - Fixed two visual layout bugs caught in PNG screenshot review: greedy `Color.clear` vertical expansion in `WeekTimelineGridView` weekday header and standalone window background fill in `PomodoroPopoverView`.
 - Verified **129 tests across 25 suites passing** in `./scripts/run-qa-tests.sh` (`0.081s`), `100.0 / 100` feature parity in `replica/features.csv` via `parity.py`, valid codesigned ARM64 release `TimeStamp.app`, and intact production DB (`36 timeEntries`, `1 goal`, `2 projects`, `4 clients`, `4 tags`, `1 task`).
+
+
+---
+
+## Phase 7 — Idle Detection Bug Fix (D-IDLE-01)
+
+**Date:** 2026-11-27  
+**Trigger:** Manual Acceptance Test 1 — false idle-resolution sheet fired immediately (0m) after starting a timer.
+
+### Changes
+- **`Sources/Core/System/IdleDetectionManager.swift`**
+  - Added `timerSessionStartedAt: Date?` private property.
+  - Added `notifyTimerStarted(at:)` public method.
+  - `startMonitoring()` now wires `timerManager.onTimerSessionStarted` callback.
+  - `evaluateIdleState()` caps raw HID idle seconds to `min(rawHIDSeconds, secondsSinceSessionStart)`.
+  - `dismissPrompt()` clears `timerSessionStartedAt`.
+
+- **`Sources/Core/Timer/TimerManager.swift`**
+  - Added `onTimerSessionStarted: ((Date) -> Void)?` callback property.
+  - `start()`, `resume()`, `restoreActiveSession()` all invoke the callback.
+
+- **`Tests/Phase5SystemIntegrationTests.swift`**
+  - Updated Path A test to backdate entry and call `notifyTimerStarted` correctly.
+  - Added 3 new regression tests (D-IDLE-01 suite).
+
+### Test Result
+**132/132 tests passing** (25 suites, 0.085s, exit code 0).  
+3 net new regression tests added.
+
+### Release Build
+Rebuilt `TimeStamp.app` from clean release target.

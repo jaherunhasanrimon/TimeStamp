@@ -31,6 +31,11 @@ public final class IdleDetectionManager {
     private let idleSecondsProvider: () -> TimeInterval
     private var monitorTimer: Timer?
 
+    /// Tracks when the most recent timer session began. Any HID idle seconds that
+    /// predate this timestamp are excluded so that a stale system-wide idle reading
+    /// (from before the user clicked Play) cannot trigger an immediate idle sheet.
+    private var timerSessionStartedAt: Date? = nil
+
     public init(
         store: PersistenceStore,
         timerManager: TimerManager,
@@ -68,6 +73,10 @@ public final class IdleDetectionManager {
 
     public func startMonitoring() {
         stopMonitoring()
+        // Wire the timer-start callback so TimerManager notifies us without a direct import cycle.
+        timerManager.onTimerSessionStarted = { [weak self] date in
+            self?.notifyTimerStarted(at: date)
+        }
         let timer = Timer(timeInterval: 15.0, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.evaluateIdleState(now: Date())
@@ -82,16 +91,38 @@ public final class IdleDetectionManager {
         monitorTimer = nil
     }
 
+    // MARK: - Timer Session Coordination
+
+    /// Call this whenever a timer session starts (or resumes after a pause).
+    /// Records the moment so that pre-existing HID idle readings are ignored.
+    public func notifyTimerStarted(at date: Date = Date()) {
+        timerSessionStartedAt = date
+        // Dismiss any stale prompt that might have lingered from a previous session.
+        if isPromptPresented { dismissPrompt() }
+    }
+
     /// Evaluates current system HID inactivity against threshold when a timer is actively running.
+    ///
+    /// Key invariant: the effective idle window is capped to the time elapsed since the
+    /// most-recent timer session start. This prevents a stale system-wide HID reading
+    /// (accumulated before the user clicked Play) from triggering an immediate sheet.
     public func evaluateIdleState(now: Date = Date()) {
         guard isEnabled else { return }
         guard timerManager.isRunning, let active = timerManager.activeEntry else { return }
         guard !isPromptPresented else { return }
 
-        let idleSeconds = max(0, idleSecondsProvider())
+        // Raw HID idle seconds from the system (seconds since last mouse/keyboard event).
+        let rawIdleSeconds = max(0, idleSecondsProvider())
+
+        // Cap idle seconds to the time elapsed since this timer session began.
+        // This guarantees that inactivity that predates the timer start is not counted.
+        let sessionFloor: Date = timerSessionStartedAt ?? active.startDate
+        let secondsSinceSessionStart = max(0, now.timeIntervalSince(sessionFloor))
+        let effectiveIdleSeconds = min(rawIdleSeconds, secondsSinceSessionStart)
+
         let thresholdSeconds = TimeInterval(max(1, idleThresholdMinutes) * 60)
-        if idleSeconds >= thresholdSeconds {
-            let calculatedIdleStart = now.addingTimeInterval(-idleSeconds)
+        if effectiveIdleSeconds >= thresholdSeconds {
+            let calculatedIdleStart = now.addingTimeInterval(-effectiveIdleSeconds)
             self.idleStartedAt = max(active.startDate, calculatedIdleStart)
             self.detectedIdleSeconds = max(0, now.timeIntervalSince(self.idleStartedAt ?? now))
             self.affectedEntryDescription = active.entryDescription.isEmpty ? "Running timer" : active.entryDescription
@@ -197,6 +228,7 @@ public final class IdleDetectionManager {
         isPromptPresented = false
         detectedIdleSeconds = 0
         idleStartedAt = nil
+        timerSessionStartedAt = nil
     }
 
     private func clampCutoff(_ candidate: Date, active: TimeEntry, now: Date) -> Date {
